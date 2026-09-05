@@ -207,18 +207,46 @@ download running:
 | Mod sampler total | 67 611 056 B | 2 820 786 B |
 | Ratio | **1.0006** | **1.0008** |
 
-**Cost** — the dedicated tool-mod process, 30 s and 45 s windows, 1 s interval:
+**Cost** — the dedicated tool-mod process, 20/30/45 s windows, 1 s interval:
 
 | Metric | Value |
 | --- | --- |
-| CPU | 0.094 s / 30 s = **0.31 % of one core** (0.026 % of a 12-thread CPU) |
-| Working set | 27.05 → 27.06 MB (**+4 KB**) |
-| Handles | 261 → 261 (**0**) |
-| GDI / USER objects | 11 / 15, stable |
-| Threads | 7 |
+| CPU | 0.09–0.14 s per 30 s = **0.3–0.5 % of one core** (≈0.03 % of a 12-thread CPU) |
+| Working set | 27–31 MB, flat (±60 KB across a window) |
+| Handles | no change over 45 s |
+| GDI / USER objects | 19 / 22, stable |
+| Threads | 7–8 |
 
 **Leak check** — 1500 iterations of drawing the widget and the details panel into
 offscreen DCs: GDI +1, USER +2 total (GDI+ internals, not per-iteration).
+
+## What was tested
+
+Verified live on this machine, not just compiled:
+
+* Widget appears docked on the taskbar at `(12,1022) 200x48` with the taskbar at
+  `(0,1012)-(1920,1080)`; positions itself relative to `Shell_TrayWnd`.
+* Download and upload speeds during real 7.6 MB downloads (peak 4.09 MB/s on a
+  100 Mbit link) and while idle.
+* Accuracy against Windows perf counters: ratio 1.0006 / 1.0008 (table above).
+* All three layouts (`full`, `speeds`, `oneline`) and both unit systems
+  (`12.4 MB/s` vs `99.2 Mbps` — verified `8.82 Kbps` where bytes showed
+  `1.10 KB/s`).
+* Light and dark theme: text flips to dark on a light theme, live, without
+  reloading the mod.
+* DPI 100 % / 125 % / 150 % switched at runtime: widget goes 200x48 → 250x60 →
+  300x72, stays vertically centred in the taskbar, text stays natively crisp
+  (not bitmap-stretched).
+* Hover tooltip, click-to-open details panel, click-to-close, click-to-reopen,
+  right-click context menu (all 7 items), Reset button in the panel, and reset
+  via the settings dropdown — totals dropped from tens of MB to KB each time.
+* Disconnected handling: Interface mode set to Wi-Fi with no Wi-Fi present shows
+  `Disconnected` instead of stale numbers, and recovers when set back to Auto.
+* Taskbar recovery: `TaskbarCreated` broadcast, and hiding/restoring
+  `Shell_TrayWnd` — the widget hides with the taskbar and comes back with it.
+* Mod unload/reload cycle: persistent counters were saved on unload
+  (`down=5042198 up=19413044`) and restored on reload (4.82 MB / 18.5 MB shown).
+* Corrupt counter file is rejected with a log line instead of crashing.
 
 ## Troubleshooting
 
