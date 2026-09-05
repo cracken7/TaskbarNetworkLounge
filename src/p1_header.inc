@@ -61,14 +61,50 @@ same spot and with the same acrylic / rounded / theme-aware styling as
 // ==WindhawkModSettings==
 /*
 - Appearance:
-  - PanelWidth: 200
+  - PanelWidth: 220
     $name: Panel width
     $description: Width of the widget in pixels (at 100% scaling).
-  - PanelHeight: 48
+  - PanelHeight: 52
     $name: Panel height
     $description: Height of the widget in pixels (at 100% scaling).
-  - FontSize: 11
+  - FontSize: 13
     $name: Font size
+    $description: 13 is the sharpest default (measured); 11-12 for a smaller widget.
+  - BoldText: true
+    $name: Bold text
+    $description: Bold is much sharper at small sizes. Off = regular weight.
+  - TextWeight: bold
+    $name: Text weight
+    $options:
+    - bold: Bold (sharpest, recommended)
+    - black: Black (heaviest - Segoe UI Black)
+    - semibold: Semibold
+    - regular: Regular
+  - ArrowStyle: rounded
+    $name: Arrow style
+    $options:
+    - solid: Solid arrow (stem + head)
+    - rounded: Rounded arrow (soft, Fluent-like)
+    - chevron: Chevron (thin, modern)
+    - triangle: Triangle (compact, no stem)
+    - circle: Arrow in a circle (badge)
+  - ArrowScale: 120
+    $name: Arrow size (% of font size)
+    $description: 120 = arrow is 1.2x the font height. Capped so it cannot overflow the widget - raise Panel height for bigger arrows. Range 60-400.
+  - ShowColumnLabels: true
+    $name: Show SPEED / TOTAL captions
+    $description: Small captions above the columns so it is obvious which is which.
+  - DividerPos: 50
+    $name: Divider position (% of width)
+    $description: Where the line between SPEED and TOTAL sits. 55 = speed gets a bit more room. Range 20-80.
+  - DividerOpacity: 46
+    $name: Divider opacity (0-255)
+    $description: 0 hides the line completely.
+  - DetailsWidth: 240
+    $name: Details panel width
+    $description: Size of the pop-up panel opened by clicking the widget.
+  - DetailsHeight: 252
+    $name: Details panel height
   - LayoutMode: full
     $name: Layout
     $options:

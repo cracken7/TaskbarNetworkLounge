@@ -37,6 +37,9 @@ build_test test_netmon
 build_test test_geometry
 build_test test_render
 build_test test_accuracy
+build_test test_styles
+build_test test_text
+build_test test_fit
 
 # clang links libc++ dynamically; provide both the plain and Windhawk-renamed
 # import names next to the executables.
@@ -55,6 +58,18 @@ echo "################ geometry ################"
 echo
 echo "################ render / GDI leak ################"
 ./test_render.exe 600 || fail=1
+
+echo
+echo "################ arrow styles x text weights ################"
+./test_styles.exe || fail=1
+
+echo
+echo "################ text sharpness measurements ################"
+./test_text.exe || fail=1
+
+echo
+echo "################ width fit (clipping) ################"
+./test_fit.exe || fail=1
 
 echo
 echo "################ formatters, persistence, live sampling ################"

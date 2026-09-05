@@ -132,11 +132,24 @@ enum class CounterMode { Session, Persistent };
 enum class LayoutMode { Full, Speeds, OneLine };
 enum class ResetRequest { None, Download, Upload, Both };
 
+enum class ArrowStyle { Solid, Chevron, Triangle, Rounded, Circle };
+
+enum class TextWeight { Regular, Semibold, Bold, Black };
+
 struct ModSettings {
     // Appearance
-    int width = 200;
-    int height = 48;
-    int fontSize = 11;
+    int width = 220;
+    int height = 52;
+    int fontSize = 13;
+    bool boldText = true;
+    TextWeight textWeight = TextWeight::Bold;
+    ArrowStyle arrowStyle = ArrowStyle::Rounded;
+    int arrowScale = 120;       // percent of font size
+    bool showColumnLabels = true;
+    int dividerPos = 50;        // percent of the usable width
+    int dividerOpacity = 46;    // 0 = hidden
+    int detailsWidth = 240;
+    int detailsHeight = 252;
     LayoutMode layout = LayoutMode::Full;
     int offsetX = 12;
     int offsetY = 0;

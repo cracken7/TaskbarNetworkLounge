@@ -35,6 +35,44 @@ static void LoadSettings() {
     s.width = ClampInt(Wh_GetIntSetting(L"Appearance.PanelWidth"), 80, 1200);
     s.height = ClampInt(Wh_GetIntSetting(L"Appearance.PanelHeight"), 20, 200);
     s.fontSize = ClampInt(Wh_GetIntSetting(L"Appearance.FontSize"), 6, 40);
+    s.boldText = Wh_GetIntSetting(L"Appearance.BoldText") != 0;
+
+    std::wstring weight = ReadStringSetting(L"Appearance.TextWeight");
+    if (StringSettingIs(weight, L"black")) {
+        s.textWeight = TextWeight::Black;
+    } else if (StringSettingIs(weight, L"semibold")) {
+        s.textWeight = TextWeight::Semibold;
+    } else if (StringSettingIs(weight, L"regular")) {
+        s.textWeight = TextWeight::Regular;
+    } else {
+        s.textWeight = TextWeight::Bold;
+    }
+    // BoldText=false still forces regular, so the old switch keeps working.
+    if (!s.boldText) {
+        s.textWeight = TextWeight::Regular;
+    }
+
+    std::wstring arrow = ReadStringSetting(L"Appearance.ArrowStyle");
+    if (StringSettingIs(arrow, L"chevron")) {
+        s.arrowStyle = ArrowStyle::Chevron;
+    } else if (StringSettingIs(arrow, L"triangle")) {
+        s.arrowStyle = ArrowStyle::Triangle;
+    } else if (StringSettingIs(arrow, L"rounded")) {
+        s.arrowStyle = ArrowStyle::Rounded;
+    } else if (StringSettingIs(arrow, L"circle")) {
+        s.arrowStyle = ArrowStyle::Circle;
+    } else {
+        s.arrowStyle = ArrowStyle::Solid;
+    }
+
+    s.arrowScale = ClampInt(Wh_GetIntSetting(L"Appearance.ArrowScale"), 60, 400);
+    s.showColumnLabels = Wh_GetIntSetting(L"Appearance.ShowColumnLabels") != 0;
+    s.dividerPos = ClampInt(Wh_GetIntSetting(L"Appearance.DividerPos"), 20, 80);
+    s.dividerOpacity =
+        ClampInt(Wh_GetIntSetting(L"Appearance.DividerOpacity"), 0, 255);
+    s.detailsWidth = ClampInt(Wh_GetIntSetting(L"Appearance.DetailsWidth"), 140, 900);
+    s.detailsHeight =
+        ClampInt(Wh_GetIntSetting(L"Appearance.DetailsHeight"), 140, 900);
 
     std::wstring layout = ReadStringSetting(L"Appearance.LayoutMode");
     if (StringSettingIs(layout, L"speeds")) {

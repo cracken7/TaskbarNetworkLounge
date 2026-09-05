@@ -26,13 +26,18 @@ Click it for an acrylic details panel with a Reset button:
   route), Ethernet only, Wi-Fi only, all active adapters, or one specific
   adapter by name. Loopback, tunnels, VPN, VMware, Hyper-V, Docker, TAP,
   Bluetooth PAN and other non-physical adapters are filtered out by default.
-* **Three layouts** — speeds + totals in two columns, speeds only in two rows,
-  or a single line.
+* **Three layouts** — speeds + totals in two columns (with `SPEED` / `TOTAL`
+  captions and a movable divider), speeds only in two rows, or a single line.
 * **Bytes vs bits, never mixed up** — `MB/s` = megabytes per second,
   `Mbps` = megabits per second (1 byte = 8 bits). The unit is always drawn next
   to the number.
-* **Native look** — GDI+ anti-aliased vector arrows and ClearType text, DWM
-  rounded corners, acrylic blur, Segoe UI, automatic light/dark theme.
+* **Native look** — GDI+ anti-aliased vector arrows in five styles, grid-fitted
+  greyscale text with a contrast shadow (measured sharper than ClearType on
+  acrylic, and without its colour fringing), DWM rounded corners, acrylic blur,
+  Segoe UI in four weights, automatic light/dark theme.
+* **Tunable** — font size and weight, arrow style and size, divider position and
+  opacity, widget size and details-panel size, all from Windhawk settings with a
+  live reload.
 * **Rich tooltip** on hover; **details panel** on click; **context menu** on
   right click (refresh, reset download/upload/both, open Windows network
   settings, Windhawk settings, hide).
@@ -75,9 +80,18 @@ plus the default settings, bumping `SettingsChangeTime` so the engine reloads.
 
 | Setting | Default | Notes |
 | --- | --- | --- |
-| Panel width | 200 | logical pixels at 100 % scaling |
-| Panel height | 48 | |
-| Font size | 11 | |
+| Panel width | 220 | logical pixels at 100 % scaling |
+| Panel height | 52 | |
+| Font size | 13 | 13 measured sharpest; 11–12 for a smaller widget |
+| Text weight | Bold | `bold`, `black`, `semibold`, `regular`. Segoe UI Semibold/Black are separate font families and are resolved as such, with a fallback if missing |
+| Bold text | on | legacy switch — off forces Regular whatever Text weight says |
+| Arrow style | Rounded | `rounded`, `solid`, `chevron`, `triangle`, `circle` |
+| Arrow size | 120 % | of the font height; capped to the row pitch so the up/down glyphs can never touch or overflow — raise Panel height for genuinely bigger arrows |
+| SPEED / TOTAL captions | on | small captions above each column |
+| Divider position | 50 % | where the line between the groups sits (20–80 %); also splits the width between them |
+| Divider opacity | 46 | 0 hides the line |
+| Details panel width | 240 | size of the pop-up panel |
+| Details panel height | 252 | |
 | Layout | Speeds + totals | `full`, `speeds` (two rows), `oneline` |
 | X offset | 12 | from the taskbar's left edge (top edge if vertical) |
 | Y offset | 0 | |
@@ -86,6 +100,11 @@ plus the default settings, bumping `SettingsChangeTime` so the engine reloads.
 | Manual text color | `0xFFFFFF` | used only when Auto theme is off |
 | Colored arrows | on | blue download, green upload; off = monochrome |
 | Acrylic tint opacity | 0 | 0–255; 0 keeps pure glass |
+
+The five arrow styles and four text weights, rendered by `tests/test_styles.exe`
+(rows = weight, columns = arrow style):
+
+![Arrow styles and text weights](docs/arrow-styles.png)
 
 ### Network
 
@@ -169,11 +188,22 @@ Windhawk ships its own clang + mingw-w64 toolchain, so nothing else is needed.
 
 ```bash
 bash build.sh                 # regenerate the .wh.cpp and compile a test DLL
-bash tests/run_all.sh         # geometry + render/leak + formatter/persistence/live tests
+bash tests/run_all.sh         # all six offline suites (see below)
 python install.py             # install into Windhawk (elevated)
 ```
 
 `build.sh` compiles with `-Wall -Wextra`; the build is warning-free.
+
+### Test suites (`tests/`)
+
+| Suite | What it proves |
+| --- | --- |
+| `test_geometry` | taskbar-edge classification and widget placement for all four taskbar positions, five DPI scales, two-monitor layouts |
+| `test_render` | 600 draw cycles with no GDI/USER leak, DPI metric math, degenerate sizes, disconnected state |
+| `test_styles` | every arrow style x text weight actually draws (ink coverage per cell) and writes `styles.png` |
+| `test_text` | measured text sharpness per rendering hint / size / weight — this is how the defaults were chosen |
+| `test_fit` | worst-case string widths vs the available column width, so nothing can clip |
+| `test_netmon` | formatters, persistence round trip + corruption handling, live sampling |
 
 ### Development helpers (`tools/`)
 
@@ -224,7 +254,7 @@ offscreen DCs: GDI +1, USER +2 total (GDI+ internals, not per-iteration).
 
 Verified live on this machine, not just compiled:
 
-* Widget appears docked on the taskbar at `(12,1022) 200x48` with the taskbar at
+* Widget appears docked on the taskbar at `(12,1020) 220x52` with the taskbar at
   `(0,1012)-(1920,1080)`; positions itself relative to `Shell_TrayWnd`.
 * Download and upload speeds during real 7.6 MB downloads (peak 4.09 MB/s on a
   100 Mbit link) and while idle.
@@ -232,11 +262,17 @@ Verified live on this machine, not just compiled:
 * All three layouts (`full`, `speeds`, `oneline`) and both unit systems
   (`12.4 MB/s` vs `99.2 Mbps` — verified `8.82 Kbps` where bytes showed
   `1.10 KB/s`).
+* All five arrow styles rendered live and captured, plus all four text weights
+  offline; every combination draws (no silent blank from a missing font family).
+* Arrow-size clamp: `ArrowScale` 90 / 120 / 180 / 400 all keep two separate
+  arrows with a ≥3 px gap and ≥1 px margin inside the widget — measured from
+  screenshots, not eyeballed.
+* Divider moved to 35 % and hidden (opacity 0), both verified on screen.
 * Light and dark theme: text flips to dark on a light theme, live, without
   reloading the mod.
-* DPI 100 % / 125 % / 150 % switched at runtime: widget goes 200x48 → 250x60 →
-  300x72, stays vertically centred in the taskbar, text stays natively crisp
-  (not bitmap-stretched).
+* DPI 100 % / 125 % / 150 % switched at runtime: the widget scales with it, stays
+  vertically centred in the taskbar, and the text stays natively crisp (not
+  bitmap-stretched).
 * Hover tooltip, click-to-open details panel, click-to-close, click-to-reopen,
   right-click context menu (all 7 items), Reset button in the panel, and reset
   via the settings dropdown — totals dropped from tens of MB to KB each time.
