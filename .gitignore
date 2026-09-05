@@ -1,0 +1,13 @@
+build/
+*.dll
+*.exe
+*.o
+*.obj
+*.pdb
+*.png
+!docs/*.png
+*.txt
+!command-line.txt
+*.csv
+__pycache__/
+*.pyc
