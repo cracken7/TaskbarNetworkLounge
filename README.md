@@ -12,12 +12,6 @@ Live download/upload speed, traffic totals, and an acrylic details panel — in 
 
 **English** · [العربية](README.ar.md)
 
-<br>
-
-<img src="docs/widget.png" alt="The widget on the taskbar" width="330">
-
-<img src="docs/panel.png" alt="The details panel" width="300">
-
 </div>
 
 ---
@@ -45,8 +39,6 @@ troubleshooting: **[INSTALL.md](INSTALL.md)**.
 | **Bilingual UI** | Every setting name, description and dropdown option is translated to Arabic; Windhawk switches automatically with the Windows UI language. |
 | **Cheap** | One API call per interval on a worker thread, repaint only when the numbers change. 0.3–0.5 % of one core, 27–31 MB, no handle leaks. |
 | **Native** | One C++ DLL in `explorer.exe`. No console window, no WinForms/WPF, no Electron, no browser, no Python runtime. |
-
-<img src="docs/arrow-styles.png" alt="The five arrow styles" width="420">
 
 ## Why the VPN case needed fixing
 

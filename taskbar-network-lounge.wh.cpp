@@ -9,12 +9,12 @@
 // @include         explorer.exe
 // @license         MIT
 // @compilerOptions -lole32 -ldwmapi -lgdi32 -luser32 -lshcore -lgdiplus -lshell32 -lcomctl32 -liphlpapi -lws2_32
-//
-// Arabic metadata. Windhawk best-matches the UI language, so the short "ar" tag
-// covers ar-EG, ar-SA and the rest.
 // @name:ar         مؤشر الشبكة لشريط المهام
 // @description:ar  سرعة الشبكة الحيّة وإجمالي الترافيك على شريط المهام في ودجت أصلية بمظهر زجاجي
 // ==/WindhawkMod==
+
+// The Arabic metadata above uses the short "ar" tag: Windhawk best-matches the UI
+// language, so it covers ar-EG, ar-SA and the rest.
 
 // ==WindhawkModReadme==
 /*
