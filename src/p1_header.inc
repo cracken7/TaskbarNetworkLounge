@@ -1,58 +1,124 @@
 // ==WindhawkMod==
 // @id              taskbar-network-lounge
 // @name            Taskbar Network Lounge
-// @description     A compact, native network monitor docked on the taskbar: live download/upload speed plus total traffic.
-// @version         1.1.0
+// @description     Live network speed and traffic totals on the taskbar, in a native acrylic widget
+// @version         1.1.1
 // @author          cracken7
 // @github          https://github.com/cracken7
+// @homepage        https://github.com/cracken7/TaskbarNetworkLounge
 // @include         explorer.exe
+// @license         MIT
 // @compilerOptions -lole32 -ldwmapi -lgdi32 -luser32 -lshcore -lgdiplus -lshell32 -lcomctl32 -liphlpapi -lws2_32
 //
-// Arabic metadata. Windhawk picks the closest match to the UI language, so the
-// short "ar" tag covers ar-EG, ar-SA and the rest.
-// @name:ar         شريط مراقبة الشبكة
-// @description:ar  مؤشر شبكة صغير وأصلي على شريط المهام: سرعة التحميل والرفع الحيّة مع إجمالي الترافيك.
+// Arabic metadata. Windhawk best-matches the UI language, so the short "ar" tag
+// covers ar-EG, ar-SA and the rest.
+// @name:ar         مؤشر الشبكة لشريط المهام
+// @description:ar  سرعة الشبكة الحيّة وإجمالي الترافيك على شريط المهام في ودجت أصلية بمظهر زجاجي
 // ==/WindhawkMod==
 
 // ==WindhawkModReadme==
 /*
 # Taskbar Network Lounge
 
-A small native network meter docked on the Windows 11 taskbar, styled like the
-rest of the shell: acrylic, rounded, theme-aware.
+A native network meter docked on the taskbar. Live download/upload speed, total
+traffic, and an acrylic details panel — styled like the rest of the Windows 11
+shell.
 
-```
-  v  12.4 MB/s  |  v  4.82 GB
-  ^  1.8 MB/s   |  ^  1.17 GB
-```
+![Widget](https://raw.githubusercontent.com/cracken7/TaskbarNetworkLounge/main/docs/widget.png)
 
-* **Live speed and total traffic** from the real interface counters
-  (`GetIfTable2`) divided by real elapsed time (`QueryPerformanceCounter`) - no
-  `ipconfig`/`netstat`/PowerShell parsing. Totals can be per session or saved to
-  disk.
-* **Follows the connection you are actually using.** Auto mode picks the adapter
-  carrying the default route, so turning a VPN on switches to the tunnel instead
-  of counting the tunnel *and* its carrier (which would double every byte).
-  Counters reset on the switch, so the totals always describe the current
-  connection. Or pick Ethernet / Wi-Fi / all / one specific adapter.
-* **Adjustable look** - 5 arrow styles, 4 text weights, font and arrow size,
-  widget and panel size, and a divider between the SPEED and TOTAL columns that
-  you can **drag with the mouse** (only the line moves).
-* **Details panel** on click (interface, status, IPv4, speeds, totals, Reset),
-  tooltip on hover, context menu on right click.
-* **Bytes vs bits** - `MB/s` is megabytes, `Mbps` is megabits; the unit is always
-  drawn next to the number.
-* Cheap: one API call per interval on a worker thread, repaint only when the
-  numbers change.
+![Details panel](https://raw.githubusercontent.com/cracken7/TaskbarNetworkLounge/main/docs/panel.png)
+
+## Features
+
+**Live speed and traffic totals.** Read from the real interface counters
+(`GetIfTable2`, IP Helper) and divided by measured elapsed time
+(`QueryPerformanceCounter`) — no `ipconfig`, `netstat` or PowerShell parsing.
+Totals can be per session or persistent across restarts.
+
+**Follows the connection you are actually using.** With a VPN running, the tunnel
+adapter and the physical adapter both carry the same bytes — the tunnel sees the
+plaintext, the NIC sees the encrypted copy — so summing them reports a 1 GB
+download as 2 GB. Auto mode tracks the single adapter holding the default route,
+so a VPN is followed while it carries the internet and dropped when it doesn't.
+Traffic totals reset when the source changes (Ethernet → VPN → Wi-Fi), so they
+always describe the connection in use. You can also force Ethernet, Wi-Fi, all
+adapters, or one specific adapter.
+
+**Adjustable appearance.** Five arrow styles, four text weights, font/arrow/widget
+/panel sizes, and a divider between the SPEED and TOTAL columns that you can
+**drag with the mouse** — only the line moves, the text stays put.
+
+**Details panel** on click: interface, status, IPv4, speeds, totals and a Reset
+button. Rich tooltip on hover, context menu on right click.
+
+**Bytes vs bits, never mixed up.** `MB/s` is megabytes per second, `Mbps` is
+megabits per second; the unit is always drawn next to the number.
+
+**Cheap.** One API call per interval on a worker thread, repaint only when the
+numbers change. Measured: 0.3–0.5 % of one core, 27–31 MB, no handle leaks.
 
 ## Requirements
-Windows 11 (rounded corners + acrylic); works on Windows 10 with square corners.
-Turn Taskbar Widgets off if they overlap: Taskbar Settings -> Widgets -> Off.
+
+Windows 11 for rounded corners and acrylic; works on Windows 10 with square
+corners. If the Windows Widgets button overlaps the meter, turn it off in
+Taskbar Settings → Widgets.
 
 ## Notes
+
 * Attaches to the primary taskbar (`Shell_TrayWnd`).
 * Speeds are sampled, so a single reading can differ from Task Manager by a few
-  percent; the average over a second matches.
+  percent; the average over a second matches (measured 0.06 % over 22 s).
+* Source, tests and full documentation:
+  [github.com/cracken7/TaskbarNetworkLounge](https://github.com/cracken7/TaskbarNetworkLounge)
+
+---
+
+# مؤشر الشبكة لشريط المهام
+
+مؤشر شبكة أصلي يستقرّ على شريط المهام: سرعة التحميل والرفع الحيّة، وإجمالي
+الترافيك، ولوحة تفاصيل زجاجية — بنفس هوية ويندوز 11.
+
+## الميزات
+
+**سرعة حيّة وإجماليات ترافيك.** تُقرأ من عدّادات كرت الشبكة الحقيقية
+(`GetIfTable2`) وتُقسَم على الزمن المقيس فعليًّا (`QueryPerformanceCounter`) — بدون
+قراءة مخرجات `ipconfig` أو `netstat` أو PowerShell. والإجماليات إما للجلسة أو
+دائمة تُحفَظ على القرص.
+
+**يتابع الاتصال المستخدَم فعلًا.** أثناء تشغيل VPN يحمل كرت النفق والكرت الفيزيائي
+نفس البيانات — النفق يرى المحتوى المفتوح والكرت يرى المشفَّر — فجمعهما يجعل تحميل
+1 جيجا يظهر 2 جيجا. الوضع التلقائي يتابع الكرت الواحد الحامل لمسار الإنترنت
+الافتراضي، فيتابع الـVPN وهو حامل الإنترنت ويتركه حين لا يكون كذلك. وتتصفّر
+الإجماليات عند تغيّر المصدر (إيثرنت ← VPN ← واي فاي) لتبقى الأرقام دائمًا عن
+الاتصال الحالي. ويمكنك أيضًا تثبيت إيثرنت أو واي فاي أو كل الكروت أو كرت محدد.
+
+**مظهر قابل للضبط.** خمسة أشكال للأسهم، وأربعة أوزان للخط، وأحجام للخط والسهم
+والودجت واللوحة، وخط فاصل بين عمودَي SPEED و TOTAL **يمكن سحبه بالماوس** — الخط
+وحده هو الذي يتحرك والكتابة تبقى في مكانها.
+
+**لوحة تفاصيل** عند الضغط: الكرت والحالة وعنوان IPv4 والسرعات والإجماليات وزر
+تصفير. وتلميح غنيّ عند المرور بالماوس، وقائمة عند كليك يمين.
+
+**بايت أم بِت بلا لبس.** `MB/s` تعني ميجابايت في الثانية و`Mbps` تعني ميجابِت في
+الثانية، والوحدة مكتوبة دائمًا بجانب الرقم.
+
+**خفيف.** نداء واحد لكل دورة على خيط منفصل، وإعادة رسم فقط عند تغيّر الأرقام.
+بالقياس: 0.3–0.5% من نواة واحدة، و27–31 ميجابايت، وبلا تسريب مقابض.
+
+## المتطلبات
+
+ويندوز 11 للحصول على الحواف الدائرية والأكريليك، ويعمل على ويندوز 10 بحواف قائمة.
+لو تعارض زر Widgets مع المؤشر، أوقِفه من إعدادات شريط المهام ← Widgets.
+
+## ملاحظات
+
+* يرتبط بشريط المهام الأساسي (`Shell_TrayWnd`).
+* السرعات تُقاس بالتقطيع الزمني، فقراءة واحدة قد تختلف عن مدير المهام بنسبة قليلة،
+  لكن المتوسط خلال ثانية مطابق (المقيس: فرق 0.06% خلال 22 ثانية).
+* واجهة الإعدادات مترجمة بالكامل: يعرض Windhawk العربية تلقائيًّا حين تكون لغة
+  واجهة ويندوز عربية.
+* الكود والاختبارات والشرح الكامل:
+  [github.com/cracken7/TaskbarNetworkLounge](https://github.com/cracken7/TaskbarNetworkLounge)
 */
 // ==/WindhawkModReadme==
 
