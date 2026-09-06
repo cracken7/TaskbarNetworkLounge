@@ -2,62 +2,87 @@
 
 *[بالعربية بالأسفل](#تركيب-مؤشر-الشبكة-لشريط-المهام)*
 
+Total time: about two minutes. You do not need to know anything about programming —
+Windhawk does the compiling for you when you press one button.
+
 ## 1. Install Windhawk
 
-Download and install Windhawk from [windhawk.net](https://windhawk.net). It is the
-loader that injects this mod into `explorer.exe`; the mod cannot run without it.
+Download and install Windhawk from [windhawk.net](https://windhawk.net).
 
-## 2. Get the mod source
+Windhawk is a small program that loads mods like this one into Windows. This mod
+cannot run without it. You install Windhawk once, and it stays.
 
-Either download
+## 2. Get the mod file
+
+Download
 **[taskbar-network-lounge.wh.cpp](https://github.com/cracken7/TaskbarNetworkLounge/releases/latest/download/taskbar-network-lounge.wh.cpp)**
-from the latest release, or take it
+from the latest release.
+
+(Alternative: take it
 [straight from the repository](https://raw.githubusercontent.com/cracken7/TaskbarNetworkLounge/main/taskbar-network-lounge.wh.cpp)
-(right click → Save as).
+with right click → Save as.)
+
+It is a plain text file. Do not worry about the `.cpp` extension — you never open
+it yourself.
 
 ## 3. Add it to Windhawk
 
 1. Open Windhawk.
-2. Click **Create a new mod**.
-3. Select everything in the editor (`Ctrl+A`) and paste the file over it.
-4. Click **Compile mod** and wait for the compiler to finish.
-5. The widget appears on the taskbar within a few seconds.
+2. Click **Create a new mod**. A code editor opens with a template in it.
+3. Click inside the editor, press `Ctrl+A` to select everything, then paste the
+   file's contents over it (open the downloaded file in Notepad, `Ctrl+A`,
+   `Ctrl+C`, then `Ctrl+V` here).
+4. Click **Compile mod**, and wait a few seconds for it to finish.
+5. The widget appears on your taskbar, near the left end.
 
-## 4. Change settings
+That is the whole installation. It survives restarts; you do not repeat this.
 
-Windhawk → **Mods** → *Taskbar Network Lounge* → **Settings**. The settings are
-translated: Windhawk shows Arabic automatically when the Windows UI language is
-Arabic.
+## 4. Change the settings
 
-## Uninstalling
+Windhawk → **Mods** → *Taskbar Network Lounge* → **Settings**.
 
-Windhawk → Mods → *Taskbar Network Lounge* → **Remove**. To keep the mod but hide
-the widget, turn off *Behavior → Start enabled*.
+Change a value, then press **Save**. The widget updates immediately — no restart
+needed. The settings are fully translated: Windhawk shows Arabic automatically
+when your Windows display language is Arabic.
 
-Persistent traffic totals live in Windhawk's per-mod storage, so removing the mod
-removes them too. To zero them while keeping the mod, use *Reset traffic counters*
-in the settings, the Reset button in the details panel, or the right-click menu.
+The defaults are the recommended values, so you can leave everything as it is.
 
-## Troubleshooting
+## Removing it
 
-**Nothing shows up.** Windows Widgets can sit in the same spot — turn them off
-(Taskbar Settings → Widgets). Another taskbar mod drawing at the same offset will
-also cover it; change *Appearance → X offset*.
+Windhawk → Mods → *Taskbar Network Lounge* → **Remove**.
 
-**"No Network".** No adapter matched the current Interface mode. Set it to *Auto*,
-or turn *Ignore virtual adapters* off if your connection runs through a virtual
-adapter that isn't holding the default route.
+To keep the mod but hide the widget, turn off *Behaviour → Start enabled* instead.
 
-**Totals look wrong after connecting a VPN.** They reset on purpose when the
-internet source changes, so the numbers describe the connection you're on. Turn
-*Network → Reset counters when the internet source changes* off to accumulate
-across adapters instead.
+Persistent traffic totals live in Windhawk's own storage for this mod, so removing
+the mod removes them too. To zero them while keeping the mod, use *Reset traffic
+counters* in the settings, the Reset button in the details panel, or the right
+click menu.
 
-**Speeds differ from Task Manager.** Both sample; a single reading can differ by a
-few percent. The average over a second matches (measured: 0.06 % over 22 s).
+## If something is wrong
 
-**The widget disappeared after an Explorer restart.** It re-attaches on
-`TaskbarCreated`. If it doesn't, restart the Windhawk engine from its tray icon.
+**Nothing appeared on the taskbar.** The Windows Widgets button sits in the same
+place, so it may be covering the meter. Turn Widgets off in Taskbar Settings, or
+move the meter to the right by raising *Appearance → X offset*. If you have
+another taskbar mod drawing in that spot, the same fix applies.
+
+**It says "No Network".** No adapter matched what you asked for. Set *Network →
+Interface mode* back to **Auto**. If your connection runs through a virtual
+adapter that is not the one holding the default route, also turn *Ignore virtual
+adapters* off.
+
+**The totals reset when I connected a VPN.** That is intentional: the numbers are
+meant to describe the connection you are using right now, and a total carried over
+from a different connection would be meaningless. If you want one running total
+across every connection instead, turn off *Network → Reset counters when the
+internet source changes*.
+
+**The speed does not match Task Manager exactly.** Both take snapshots, just at
+slightly different instants, so a single reading can differ by a few percent.
+Averaged over a second they agree — measured to within 0.06% over 22 seconds.
+
+**The widget vanished after Explorer restarted.** It re-attaches itself when the
+taskbar is recreated. If it does not come back, restart the Windhawk engine from
+its tray icon.
 
 ## Building from source
 
@@ -73,64 +98,81 @@ python install.py          # write into Windhawk and restart the engine
 
 ---
 
+<div dir="rtl">
+
 # تركيب مؤشر الشبكة لشريط المهام
+
+الوقت المطلوب: دقيقتان تقريبًا. ولا تحتاج أن تعرف أي شيء عن البرمجة — فـWindhawk هو
+الذي يتولّى الترجمة عند ضغطك زرًّا واحدًا.
 
 ## 1. ثبّت Windhawk
 
-نزّل Windhawk من [windhawk.net](https://windhawk.net) وثبّته. هو البرنامج الذي
-يُحمّل هذا المود داخل `explorer.exe`، والمود لا يعمل بدونه.
+نزّل Windhawk من [windhawk.net](https://windhawk.net) وثبّته.
+
+Windhawk برنامج صغير يُحمّل المودات مثل هذا داخل ويندوز، وهذا المود لا يعمل بدونه.
+تثبّته مرة واحدة ويبقى.
 
 ## 2. نزّل ملف المود
 
 نزّل ملف
 **[taskbar-network-lounge.wh.cpp](https://github.com/cracken7/TaskbarNetworkLounge/releases/latest/download/taskbar-network-lounge.wh.cpp)**
-من آخر إصدار، أو خُذه
-[من المستودع مباشرة](https://raw.githubusercontent.com/cracken7/TaskbarNetworkLounge/main/taskbar-network-lounge.wh.cpp)
-(كليك يمين ← حفظ باسم).
+من آخر إصدار.
+
+(بديل: خُذه [من المستودع مباشرة](https://raw.githubusercontent.com/cracken7/TaskbarNetworkLounge/main/taskbar-network-lounge.wh.cpp)
+بكليك يمين ← حفظ باسم.)
+
+هو ملف نصّي عادي. ولا تقلق من امتداد `.cpp` — فأنت لن تفتحه بنفسك أبدًا.
 
 ## 3. أضِفه إلى Windhawk
 
 1. افتح Windhawk.
-2. اضغط **Create a new mod**.
-3. حدّد كل ما في المحرّر (`Ctrl+A`) والصق الملف فوقه.
-4. اضغط **Compile mod** وانتظر انتهاء الترجمة.
-5. يظهر الودجت على شريط المهام في ثوانٍ.
+2. اضغط **Create a new mod**، فيُفتح محرّر كود فيه قالب جاهز.
+3. اضغط داخل المحرّر، ثم `Ctrl+A` لتحديد كل ما فيه، ثم الصق محتوى الملف فوقه (افتح
+   الملف الذي نزّلته بالـNotepad، ثم `Ctrl+A`، ثم `Ctrl+C`، ثم `Ctrl+V` هنا).
+4. اضغط **Compile mod** وانتظر ثوانٍ حتى تنتهي.
+5. سيظهر الودجت على شريط المهام قرب طرفه الأيسر.
+
+هذا هو التركيب كله. ويصمد بعد إعادة تشغيل الجهاز، فلا تُعيده مرة أخرى.
 
 ## 4. تغيير الإعدادات
 
-Windhawk ← **Mods** ← *Taskbar Network Lounge* ← **Settings**. والإعدادات مترجمة:
-يعرض Windhawk العربية تلقائيًّا حين تكون لغة واجهة ويندوز عربية.
+Windhawk ← **Mods** ← *Taskbar Network Lounge* ← **Settings**.
+
+غيّر أي قيمة ثم اضغط **Save**، فيتحدّث الودجت فورًا بلا إعادة تشغيل. والإعدادات
+مترجمة بالكامل: يعرض Windhawk العربية تلقائيًّا حين تكون لغة عرض ويندوز عربية.
+
+والقيم الافتراضية هي المُستحسنة، فيمكنك ترك كل شيء كما هو.
 
 ## إزالة المود
 
-Windhawk ← Mods ← *Taskbar Network Lounge* ← **Remove**. ولو أردت الإبقاء على المود
-مع إخفاء الودجت، أوقِف *Behavior ← Start enabled*.
+Windhawk ← Mods ← *Taskbar Network Lounge* ← **Remove**.
 
-الإجماليات الدائمة محفوظة في مخزن Windhawk الخاص بالمود، فإزالة المود تزيلها معه.
-ولتصفيرها مع الإبقاء على المود استخدم *Reset traffic counters* في الإعدادات، أو زر
-التصفير في لوحة التفاصيل، أو قائمة كليك يمين.
+ولو أردت الإبقاء على المود مع إخفاء الودجت فقط، أوقِف *السلوك ← يبدأ مُفعّلًا*.
 
-## حلّ المشاكل
+الإجماليات الدائمة محفوظة في مخزن Windhawk الخاص بهذا المود، فإزالة المود تزيلها
+معه. ولتصفيرها مع الإبقاء على المود، استخدم *تصفير عدادات الترافيك* في الإعدادات، أو
+زر التصفير في لوحة التفاصيل، أو قائمة الزر الأيمن.
 
-**لا يظهر شيء.** زر Widgets في ويندوز قد يشغل نفس المكان — أوقِفه من إعدادات شريط
-المهام ← Widgets. وأي مود آخر يرسم عند نفس الإزاحة سيغطّيه أيضًا، فغيّر
-*Appearance ← X offset*.
+## لو حدث شيء غير متوقّع
 
-**تظهر "No Network".** لا يوجد كرت مطابق لوضع اختيار الكرت الحالي. اجعله *Auto*، أو
-أوقِف *Ignore virtual adapters* لو كان اتصالك يمرّ عبر كرت وهمي لا يحمل مسار
-الإنترنت الافتراضي.
+**لم يظهر شيء على شريط المهام.** زر Widgets في ويندوز يقع في نفس المكان، فقد يكون
+يغطّي المؤشر. أوقِف Widgets من إعدادات شريط المهام، أو حرّك المؤشر يمينًا بزيادة
+*المظهر ← الإزاحة الأفقية*. وينطبق نفس الحل لو كان عندك مود آخر يرسم في نفس المكان.
 
-**الإجماليات تبدو غلط بعد تشغيل VPN.** هي تتصفّر بشكل مقصود عند تغيّر مصدر الإنترنت
-لتصف الاتصال الذي تستخدمه فعلًا. أوقِف
-*Network ← Reset counters when the internet source changes* لو أردت التجميع عبر كل
-الكروت.
+**تظهر كلمة "No Network".** لا يوجد كرت مطابق لما طلبته. أرجِع *الشبكة ← اختيار كرت
+الشبكة* إلى **تلقائي**. ولو كان اتصالك يمرّ عبر كرت وهمي ليس هو حامل المسار
+الافتراضي، فأوقِف أيضًا *تجاهل الكروت الوهمية*.
 
-**السرعات مختلفة عن مدير المهام.** كلاهما يقيس بالتقطيع الزمني، فقراءة واحدة قد
-تختلف بنسبة قليلة، لكن المتوسط خلال ثانية مطابق (المقيس: فرق 0.06% خلال 22 ثانية).
+**الإجماليات تصفّرت عند تشغيل VPN.** هذا مقصود: فالأرقام يُفترض أن تصف الاتصال الذي
+تستخدمه الآن، وإجماليّ منقول من اتصال آخر لا معنى له. ولو أردت إجماليًّا واحدًا
+متراكمًا عبر كل الاتصالات، فأوقِف *الشبكة ← تصفير العدادات عند تغيّر مصدر الإنترنت*.
 
-**الودجت اختفى بعد إعادة تشغيل Explorer.** يعيد الارتباط تلقائيًّا عند
-`TaskbarCreated`، ولو لم يحدث فأعد تشغيل محرّك Windhawk من أيقونته في منطقة
-الإشعارات.
+**السرعة لا تطابق مدير المهام بالضبط.** كلاهما يأخذ لقطات، لكن في لحظات مختلفة
+قليلًا، فقراءة واحدة قد تختلف بنسبة قليلة. أما المتوسط خلال ثانية فمتطابق — والمقيس
+فرق لا يزيد عن 0.06% خلال 22 ثانية.
+
+**الودجت اختفى بعد إعادة تشغيل Explorer.** يعيد الارتباط بنفسه عند إعادة إنشاء شريط
+المهام. ولو لم يرجع، فأعد تشغيل محرّك Windhawk من أيقونته في منطقة الإشعارات.
 
 ## البناء من الكود
 
@@ -143,3 +185,5 @@ bash build.sh              # يدمج src/p1..p7.inc ويبني DLL للاختب
 bash tests/run_all.sh      # كل مجموعات الاختبار الثماني
 python install.py          # الكتابة في Windhawk وإعادة تشغيل المحرّك
 ```
+
+</div>
