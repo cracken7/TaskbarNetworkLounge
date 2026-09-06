@@ -2,10 +2,13 @@
 // Taskbar Network Lounge - implementation
 //
 // Design notes:
-//  * Architecture mirrors Taskbar Music Lounge: a Windhawk *tool mod* that owns
-//    a native layered popup window docked over Shell_TrayWnd, drawn with GDI+,
-//    acrylic via SetWindowCompositionAttribute, rounded via DWM.
-//  * All media/GSMTC logic is replaced by IP Helper network counters.
+//  * This is a Windhawk *tool mod* that owns a native layered popup window docked
+//    over Shell_TrayWnd, drawn with GDI+, acrylic via
+//    SetWindowCompositionAttribute, rounded via DWM. That window/z-band/acrylic
+//    approach follows what taskbar-music-lounge and net-speed-taskbar do; both
+//    were read as references while building this, no code was taken from either.
+//  * The network measurement, adapter selection, traffic totals and details panel
+//    are specific to this mod.
 //  * winsock2.h MUST be included before iphlpapi.h/netioapi.h, otherwise
 //    mingw-w64 hides MIB_IF_ROW2 / GetIfTable2 (they are only declared when
 //    _WS2IPDEF_ is defined).

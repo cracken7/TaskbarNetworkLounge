@@ -177,6 +177,16 @@ contrast shadow, and `GenericTypographic` string formatting — the default adds
 - Speeds are sampled, so one reading can differ from Task Manager by a few
   percent; the average over a second matches.
 
+## Credits
+
+The window creation, z-band placement and acrylic treatment follow the approach
+used by [Taskbar Music Lounge](https://github.com/ramensoftware/windhawk-mods/blob/main/mods/taskbar-music-lounge.wh.cpp)
+and [Taskbar Network Speed Indicator](https://github.com/ramensoftware/windhawk-mods/blob/main/mods/net-speed-taskbar.wh.cpp)
+by [NarayanChetri](https://github.com/NarayanChetri) — both read as references
+while building this. The latter's README is also where the `explorer.exe`-rather-
+than-`windhawk.exe` requirement for `CreateWindowInBand` is documented. No code was
+copied from either.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

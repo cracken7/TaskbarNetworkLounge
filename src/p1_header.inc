@@ -72,6 +72,10 @@ Taskbar Settings → Widgets.
   percent; the average over a second matches (measured 0.06 % over 22 s).
 * Source, tests and full documentation:
   [github.com/cracken7/TaskbarNetworkLounge](https://github.com/cracken7/TaskbarNetworkLounge)
+* Design references: the window creation, z-band placement and acrylic treatment
+  follow the approach used by **Taskbar Music Lounge** and **Taskbar Network Speed
+  Indicator** (`net-speed-taskbar` by NarayanChetri), both read while building this.
+  No code was copied from either.
 
 ---
 
@@ -125,6 +129,10 @@ Taskbar Settings → Widgets.
   واجهة ويندوز عربية.
 * الكود والاختبارات والشرح الكامل:
   [github.com/cracken7/TaskbarNetworkLounge](https://github.com/cracken7/TaskbarNetworkLounge)
+* مراجع التصميم: طريقة إنشاء النافذة ووضعها في نطاق الـz والمظهر الزجاجي تتبع ما
+  يفعله مودَا **Taskbar Music Lounge** و**Taskbar Network Speed Indicator**
+  (`net-speed-taskbar` لـNarayanChetri)، وقد قرأتُهما أثناء بناء هذا المود، ولم
+  يُنسَخ أي كود منهما.
 */
 // ==/WindhawkModReadme==
 

@@ -175,6 +175,15 @@ python tools/setopt.py --show
 - السرعات تُقاس بالتقطيع الزمني، فقراءة واحدة قد تختلف عن مدير المهام بنسبة قليلة،
   لكن المتوسط خلال ثانية مطابق.
 
+## شكر ومراجع
+
+طريقة إنشاء النافذة ووضعها في نطاق الـz والمظهر الزجاجي تتبع ما يفعله
+[Taskbar Music Lounge](https://github.com/ramensoftware/windhawk-mods/blob/main/mods/taskbar-music-lounge.wh.cpp)
+و[Taskbar Network Speed Indicator](https://github.com/ramensoftware/windhawk-mods/blob/main/mods/net-speed-taskbar.wh.cpp)
+لـ[NarayanChetri](https://github.com/NarayanChetri)، وقد قرأتُ الاثنين كمراجع
+أثناء بناء هذا المود. وفي ملف الثاني موثَّق أيضًا سبب استهداف `explorer.exe` بدل
+`windhawk.exe` مع `CreateWindowInBand`. ولم يُنسَخ أي كود من أيٍّ منهما.
+
 ## الترخيص
 
 MIT — انظر [LICENSE](LICENSE).
