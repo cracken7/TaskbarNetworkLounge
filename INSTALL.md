@@ -47,6 +47,15 @@ when your Windows display language is Arabic.
 
 The defaults are the recommended values, so you can leave everything as it is.
 
+## Daily use
+
+- **Left click** the widget for the details panel, **middle click** to cycle
+  between showing both halves, speed only, or traffic only, and **right click**
+  for the menu — it also toggles the SPEED / TOTAL captions and the arrows.
+- Every choice made from the menu is remembered across restarts.
+- To hide the arrows entirely, pick *Arrow style → No arrows*, or untick *Show
+  arrows* in the right click menu.
+
 ## Removing it
 
 Windhawk → Mods → *Taskbar Network Lounge* → **Remove**.
@@ -142,6 +151,15 @@ Windhawk ← **Mods** ← *Taskbar Network Lounge* ← **Settings**.
 مترجمة بالكامل: يعرض Windhawk العربية تلقائيًّا حين تكون لغة عرض ويندوز عربية.
 
 والقيم الافتراضية هي المُستحسنة، فيمكنك ترك كل شيء كما هو.
+
+## الاستخدام اليومي
+
+- **اضغط بالزر الأيسر** على الودجت لفتح لوحة التفاصيل، و**بالزر الأوسط** للتنقّل
+  بين عرض النصفين معًا ثم السرعة فقط ثم الترافيك فقط، و**بالزر الأيمن** للقائمة —
+  ومنها أيضًا تشغيل/إطفاء عنواني SPEED وTOTAL والأسهم.
+- كل ما تختاره من القائمة يُحفَظ ويصمد بعد إعادة التشغيل.
+- لإخفاء الأسهم كليًّا اختر *شكل السهم ← بدون أسهم*، أو أطفئ *Show arrows* من
+  قائمة الزر الأيمن.
 
 ## إزالة المود
 

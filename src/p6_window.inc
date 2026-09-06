@@ -572,6 +572,33 @@ static bool DividerHover(HWND hwnd, int mouseX, const ModSettings& s) {
 }
 
 // --- Context menu ----------------------------------------------------------
+// Apply a live display-mode change: atomic first (painters read it), then
+// storage, then repaint. Settings are NOT reloaded - the setting is only the
+// default and would stomp the menu choice.
+static void ApplyDisplayMode(HWND hwnd, int mode) {
+    g_displayMode = ClampInt(mode, 0, 2);
+    Wh_SetIntValue(L"DisplayMode", g_displayMode.load());
+    InvalidateRect(hwnd, nullptr, TRUE);
+    if (g_hPanel && g_panelVisible.load()) {
+        InvalidateRect(g_hPanel, nullptr, TRUE);
+    }
+}
+
+static void ApplyCaptionBits(HWND hwnd, int bits) {
+    g_captionBits = ClampInt(bits, 0, 3);
+    Wh_SetIntValue(L"CaptionBits", g_captionBits.load());
+    InvalidateRect(hwnd, nullptr, TRUE);
+}
+
+static void ApplyArrowsHidden(HWND hwnd, bool hidden) {
+    g_arrowsHidden = hidden ? 1 : 0;
+    Wh_SetIntValue(L"ArrowsHidden", g_arrowsHidden.load());
+    InvalidateRect(hwnd, nullptr, TRUE);
+    if (g_hPanel && g_panelVisible.load()) {
+        InvalidateRect(g_hPanel, nullptr, TRUE);
+    }
+}
+
 static void ShowContextMenu(HWND hwnd) {
     HMENU menu = CreatePopupMenu();
     if (!menu) {
@@ -580,6 +607,34 @@ static void ShowContextMenu(HWND hwnd) {
 
     AppendMenuW(menu, MF_STRING, IDM_REFRESH, L"Refresh");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    {
+        // What the widget shows: speed, traffic, or both. Radio check marks so
+        // the current choice is obvious and one click switches.
+        const int mode = ClampInt(g_displayMode.load(), 0, 2);
+        AppendMenuW(menu, MF_STRING | MF_RADIOCHECK | MF_GROUPCHECK |
+                                (mode == 0 ? MF_CHECKED : MF_UNCHECKED),
+                    IDM_SHOW_BOTH, L"Show both");
+        AppendMenuW(menu, MF_STRING | MF_RADIOCHECK |
+                                (mode == 1 ? MF_CHECKED : MF_UNCHECKED),
+                    IDM_SHOW_SPEED, L"Show speed only");
+        AppendMenuW(menu, MF_STRING | MF_RADIOCHECK |
+                                (mode == 2 ? MF_CHECKED : MF_UNCHECKED),
+                    IDM_SHOW_TRAFFIC, L"Show traffic only");
+        AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+        // The small captions above the two halves, and the arrows themselves.
+        const int bits = ClampInt(g_captionBits.load(), 0, 3);
+        AppendMenuW(menu, MF_STRING |
+                                (bits & 1 ? MF_CHECKED : MF_UNCHECKED),
+                    IDM_TOGGLE_CAPTION_SPEED, L"Show SPEED caption");
+        AppendMenuW(menu, MF_STRING |
+                                (bits & 2 ? MF_CHECKED : MF_UNCHECKED),
+                    IDM_TOGGLE_CAPTION_TOTAL, L"Show TOTAL caption");
+        AppendMenuW(menu, MF_STRING |
+                                (g_arrowsHidden.load() ? MF_UNCHECKED
+                                                       : MF_CHECKED),
+                    IDM_TOGGLE_ARROWS, L"Show arrows");
+        AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    }
     AppendMenuW(menu, MF_STRING, IDM_RESET_BOTH, L"Reset counters (both)");
     AppendMenuW(menu, MF_STRING, IDM_RESET_DL, L"Reset download");
     AppendMenuW(menu, MF_STRING, IDM_RESET_UL, L"Reset upload");
@@ -634,6 +689,24 @@ static void ShowContextMenu(HWND hwnd) {
             Wh_SetIntValue(L"DividerOffset", 0);
             LoadSettings();
             InvalidateRect(hwnd, nullptr, FALSE);
+            break;
+        case IDM_SHOW_BOTH:
+            ApplyDisplayMode(hwnd, 0);
+            break;
+        case IDM_SHOW_SPEED:
+            ApplyDisplayMode(hwnd, 1);
+            break;
+        case IDM_SHOW_TRAFFIC:
+            ApplyDisplayMode(hwnd, 2);
+            break;
+        case IDM_TOGGLE_CAPTION_SPEED:
+            ApplyCaptionBits(hwnd, g_captionBits.load() ^ 1);
+            break;
+        case IDM_TOGGLE_CAPTION_TOTAL:
+            ApplyCaptionBits(hwnd, g_captionBits.load() ^ 2);
+            break;
+        case IDM_TOGGLE_ARROWS:
+            ApplyArrowsHidden(hwnd, !g_arrowsHidden.load());
             break;
         case IDM_NET_SETTINGS:
             ShellExecuteW(nullptr, L"open", L"ms-settings:network", nullptr,

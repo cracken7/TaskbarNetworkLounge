@@ -87,9 +87,13 @@ static std::map<std::wstring, std::string> g_binaryStorage;
 #include "../src/p3_settings.inc"
 #include "../src/p5_render.inc"
 
-static const wchar_t* kArrowStyles[] = {L"solid", L"rounded", L"chevron",
-                                        L"triangle", L"circle"};
-static const wchar_t* kWeights[] = {L"bold", L"black", L"semibold", L"regular"};
+static const wchar_t* kArrowStyles[] = {
+    L"solid", L"rounded", L"chevron", L"triangle", L"circle", L"double",
+    L"triple", L"outline", L"thin", L"fat", L"head", L"ring", L"square",
+    L"fade", L"dashed", L"barb", L"needle", L"dot", L"feather", L"layered",
+    L"tray", L"plus"};
+static const wchar_t* kWeights[] = {L"bold", L"black", L"semibold", L"regular",
+                                    L"italic"};
 
 static const int kCellW = 220;
 static const int kCellH = 52;

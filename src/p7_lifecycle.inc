@@ -152,6 +152,16 @@ static LRESULT CALLBACK WidgetWndProc(HWND hwnd,
             }
             return 0;
 
+        case WM_MBUTTONDOWN:
+            // Middle click cycles the display: both -> speed -> traffic -> both.
+            // A full cycle so the user can always get back to the two-column
+            // view without opening the menu.
+            if (GetSettings().cycleOnMiddleClick) {
+                const int mode = ClampInt(g_displayMode.load(), 0, 2);
+                ApplyDisplayMode(hwnd, (mode + 1) % 3);
+            }
+            return 0;
+
         case WM_RBUTTONUP:
             ShowContextMenu(hwnd);
             return 0;
@@ -345,8 +355,14 @@ BOOL WhTool_ModInit() {
     Wh_Log(L"Taskbar Network Lounge starting");
 
     // Seed the live divider offset from storage BEFORE the first settings read,
-    // so a dragged divider is already in place on the first paint.
+    // so a dragged divider is already in place on the first paint. Same for the
+    // menu-toggled display state (mode, captions, arrows).
     g_dividerOffset = Wh_GetIntValue(L"DividerOffset", 0);
+    g_displayMode = ClampInt(Wh_GetIntValue(L"DisplayMode", 0), 0, 2);
+    g_captionBits = ClampInt(Wh_GetIntValue(L"CaptionBits", 3), 0, 3);
+    g_arrowStyle = ClampInt(Wh_GetIntValue(L"ArrowStyle", (int)ArrowStyle::Rounded),
+                            0, (int)ArrowStyle::Plus);
+    g_arrowsHidden = Wh_GetIntValue(L"ArrowsHidden", 0) ? 1 : 0;
 
     LoadSettings();
     ApplyResetSettingIfChanged();

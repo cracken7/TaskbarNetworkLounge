@@ -3,7 +3,7 @@
 # Taskbar Network Lounge
 
 **A network meter that lives on your Windows 11 taskbar.**
-See your download and upload speed as it happens, plus how much data you have used — in a small glass widget that looks like it came with Windows.
+Watch your download and upload speed as it happens, and how much data you have used — in a small glass widget that looks like it came with Windows.
 
 [![Windhawk](https://img.shields.io/badge/Windhawk-mod-0078D4?style=flat-square)](https://windhawk.net)
 [![Release](https://img.shields.io/github/v/release/cracken7/TaskbarNetworkLounge?style=flat-square&color=success)](https://github.com/cracken7/TaskbarNetworkLounge/releases/latest)
@@ -28,7 +28,7 @@ See your download and upload speed as it happens, plus how much data you have us
    paste the file over it, then click *Compile mod*.
 
 The meter appears on your taskbar a few seconds later. If anything goes wrong, or
-you want the click-by-click version with pictures, read **[INSTALL.md](INSTALL.md)**.
+you want the click-by-click version, read **[INSTALL.md](INSTALL.md)**.
 
 ---
 
@@ -49,7 +49,7 @@ In both halves the top row is download and the bottom row is upload:
 Every number carries its unit next to it, so there is never any doubt about what
 you are reading.
 
-### Three ways to interact with it
+### Four ways to interact with it
 
 **Hover the mouse** over the widget and a tooltip appears with the same numbers
 plus the name of the network adapter being measured.
@@ -61,16 +61,24 @@ totals to zero.
 
 ![Details panel](docs/panel.png)
 
+**Middle click** (press the wheel) to cycle what the widget shows:
+both halves → speed only → traffic only → both.
+
 **Right click** it for a menu:
 
 | Menu item | What it does |
 | --- | --- |
 | Refresh | Take a new reading immediately |
-| Reset download / upload | Zero one of the two totals |
+| Show both / Show speed only / Show traffic only | Choose which half the widget displays |
+| Show SPEED caption / Show TOTAL caption | Tick the small labels above each half on or off |
+| Show arrows | Hide the arrows completely and keep only the numbers |
+| Reset download / upload / both | Zero the totals |
 | Reset divider position | Put the dividing line back in the middle |
-| Network settings | Open the Windows network settings page |
-| Windhawk settings | Open this mod's settings |
+| Open Network Settings | The Windows network settings page |
+| Windhawk Settings | This mod's settings |
 | Hide widget | Hide the meter (bring it back from *Start enabled* in the settings) |
+
+Everything you pick in the menu is remembered across restarts.
 
 ---
 
@@ -115,6 +123,13 @@ Wi-Fi, all adapters added together, or one specific adapter you name.
 
 ## What it can do
 
+### Show speed, show traffic, or both
+
+The widget can display both halves side by side, the live speeds alone, or the
+traffic totals alone. Switch from the right click menu, from the *Show traffic or
+speed* setting, or with one middle click. Your choice is remembered, and the
+layout adapts: a single half fills the width instead of leaving dead space.
+
 ### The numbers are measured, not estimated
 
 The mod asks Windows how many bytes your adapter has moved, waits, asks again, and
@@ -141,14 +156,17 @@ prefer.
 
 | You can change | Options |
 | --- | --- |
-| **Arrow shape** | Rounded, solid, chevron, triangle, or inside a circle |
+| **Arrow shape** | Twenty-two designs — solid, rounded, chevron, triangle, double and triple chevrons, outline, hairline, block, arrowhead-only, in a circle, ring or rounded square, fading, dashed, barbed, needle, tail-dot, fletched, two-tone, arrow-into-a-tray, arrow-with-a-plus-bar — or hide the arrows entirely |
 | **Arrow size** | As a percentage of the text size; it never grows past what fits |
-| **Text** | Four weights (bold, black, semibold, regular) and any size |
+| **Font** | Any installed font (empty for Segoe UI), five weights (bold, black, semibold, regular, italic), any size |
+| **Colours per direction** | Give download and upload their own colour — arrow and numbers together — or keep the default blue/green |
+| **SPEED / TOTAL captions** | Show both, one of them, or neither — from the settings or the right click menu |
 | **The dividing line** | **Drag it with the mouse** to give one side more room, dim it, or hide it completely |
 | **Widget size** | Width and height, plus where it sits along the taskbar |
 | **Details panel size** | Width and a minimum height — it grows on its own if the content needs more room |
-| **Colours** | Follows your Windows light/dark theme, or set the text colour yourself; coloured arrows can be switched off |
 | **Layout** | Speeds and totals side by side, speeds only in two rows, or everything on one line |
+
+![Arrow styles](docs/arrow-styles.png)
 
 About dragging the line: grab it and move it left or right, and **only the line
 moves**. The numbers stay exactly where they were — nothing shifts or re-flows.
@@ -164,9 +182,9 @@ memory, and no leaked handles after 1500 redraws.
 
 ### It looks like part of Windows
 
-Real acrylic glass, rounded corners, Segoe UI, and it follows your light/dark
-theme. There is no console window, no browser engine, no .NET or Python runtime —
-it is a single native C++ component.
+Real acrylic glass, rounded corners, and it follows your light/dark theme. There
+is no console window, no browser engine, no .NET or Python runtime — it is a
+single native C++ component.
 
 Text sharpness was tuned by measuring pixels rather than by eyeballing
 screenshots, which matters at this size: small light text on a blurred background
@@ -186,27 +204,32 @@ Windhawk shows these under the mod's **Settings** tab. Nothing here needs to be
 touched for the mod to work; the defaults are the recommended values.
 
 <details>
-<summary><b>Appearance</b> — sizes, arrows, text, colours</summary>
+<summary><b>Appearance</b> — sizes, arrows, text, colours, layout</summary>
 
 | Setting | Default | What it does |
 | --- | --- | --- |
 | Panel width / height | 220 × 52 | Size of the widget itself, in pixels at 100% display scaling |
 | Font size | 13 | Size of the numbers. 13 is the clearest; 11–12 for a smaller widget |
-| Text weight | Bold | Bold, Black, Semibold or Regular |
-| Arrow style | Rounded | Rounded, Solid, Chevron, Triangle, or Circle |
+| Font family | *(empty)* | Any installed font, e.g. `Consolas`, `Arial`, `Bahnschrift`. Empty = Segoe UI; a wrong name falls back to Segoe UI automatically |
+| Text weight | Bold | Bold, Black, Semibold, Regular or Italic |
+| Arrow style | Rounded | Twenty-two shapes, or *No arrows* to hide them |
 | Arrow size | 120% | Arrow height relative to the text. Never overflows — raise Panel height for genuinely bigger arrows |
-| SPEED / TOTAL captions | On | The small labels above the two halves |
+| SPEED / TOTAL captions | Both | Show both labels, one of them, or neither |
 | Divider position | 50% | Where the dividing line sits, which also sets how much room each half gets |
 | Divider opacity | 46 | How visible the line is. 0 hides it |
 | Drag the divider | On | Lets you move the line with the mouse |
 | Details panel width | 240 | Width of the panel that opens on click |
 | Details panel height | 276 | A *minimum*, not a fixed size — the panel grows if its contents need more room |
 | Layout | Full | Speeds + totals, speeds only in two rows, or one single line |
+| Show traffic or speed | Both | Which half the widget displays; the right click menu and middle click switch it live and the choice is remembered |
+| Middle click switches speed / traffic | On | Press the wheel on the widget to cycle both → speed → traffic |
 | X / Y offset | 12 / 0 | Where the widget sits along the taskbar. Raise X to move it right |
 | Scale with DPI | On | Keeps the widget the same apparent size when display scaling is not 100% |
 | Auto theme | On | Take the text colour from the Windows light/dark theme |
 | Manual text colour | `0xFFFFFF` | Only used when Auto theme is off. Format `0xRRGGBB` |
-| Coloured arrows | On | Blue download, green upload. Off draws both in the text colour |
+| Download color | *(empty)* | A custom colour for the download half — arrow and numbers together. Empty keeps the default blue |
+| Upload color | *(empty)* | A custom colour for the upload half — arrow and numbers together. Empty keeps the default green |
+| Coloured arrows | On | Blue download, green upload. Off draws both in the text colour. The two colour settings above override it per direction |
 | Acrylic tint opacity | 0 | Adds a tint behind the glass. Raise it if a busy wallpaper hurts readability |
 
 </details>
@@ -297,13 +320,15 @@ src/p2_core.inc        headers, ModSettings, atomics/globals, menu IDs
 src/p3_settings.inc    settings read + clamping, unit formatting, persistence
 src/p4_network.inc     GetIfTable2 sampling, adapter filtering and selection,
                        source-change detection and counter reset
-src/p5_render.inc      GDI+ painting: arrows, sharp text, widget + details panel
+src/p5_render.inc      GDI+ painting: 22 arrow styles, sharp text, widget + panel
 src/p6_window.inc      taskbar geometry, divider hit test, tooltip, context menu
 src/p7_lifecycle.inc   window proc (incl. divider drag), Wh_ModInit/AfterInit
 ```
 
 `build.sh` concatenates these into the single `taskbar-network-lounge.wh.cpp` that
 Windhawk requires. `install.py` writes it into Windhawk and restarts the engine.
+`tools/arrow_showcase.cpp` renders `docs/arrow-styles.png` from the mod's real
+arrow code, so the picture can never drift from what the mod draws.
 
 ### Commands
 

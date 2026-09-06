@@ -78,6 +78,21 @@ static const WCHAR* kPanelClass = L"WindhawkNetworkLoungePanel";
 #define IDM_WH_SETTINGS 105
 #define IDM_HIDE 106
 #define IDM_RESET_DIVIDER 107
+#define IDM_SHOW_BOTH 108
+#define IDM_SHOW_SPEED 109
+#define IDM_SHOW_TRAFFIC 110
+#define IDM_TOGGLE_CAPTION_SPEED 111
+#define IDM_TOGGLE_CAPTION_TOTAL 112
+#define IDM_TOGGLE_ARROWS 113
+
+// mingw-w64's winuser.h predates the newer menu check flags; define the ones
+// used by the display toggles (values from the Windows SDK).
+#ifndef MF_RADIOCHECK
+#define MF_RADIOCHECK 0x00000400U
+#endif
+#ifndef MF_GROUPCHECK
+#define MF_GROUPCHECK 0x00000200U
+#endif
 
 // --- Undocumented composition / z-band APIs (same as the reference mod) ----
 typedef enum _WINDOWCOMPOSITIONATTRIB { WCA_ACCENT_POLICY = 19 } WINDOWCOMPOSITIONATTRIB;
@@ -143,19 +158,26 @@ enum class CounterMode { Session, Persistent };
 enum class LayoutMode { Full, Speeds, OneLine };
 enum class ResetRequest { None, Download, Upload, Both };
 
-enum class ArrowStyle { Solid, Chevron, Triangle, Rounded, Circle };
+enum class ArrowStyle {
+    Solid, Chevron, Triangle, Rounded, Circle,
+    Double, Triple, Outline, Thin, Fat, Head, Ring, Square, Fade, Dashed,
+    Barb, Needle, Dot, Feather, Layered, Tray, Plus, None };
 
-enum class TextWeight { Regular, Semibold, Bold, Black };
+// Which of the SPEED / TOTAL captions are painted above the two columns.
+enum class CaptionMode { Both, SpeedOnly, TotalOnly, None };
+
+enum class TextWeight { Regular, Italic, Semibold, Bold, Black };
 
 struct ModSettings {
     // Appearance
     int width = 220;
     int height = 52;
     int fontSize = 13;
+    std::wstring fontFamily = L"Segoe UI";
     TextWeight textWeight = TextWeight::Bold;
     ArrowStyle arrowStyle = ArrowStyle::Rounded;
     int arrowScale = 120;       // percent of font size
-    bool showColumnLabels = true;
+    CaptionMode captions = CaptionMode::Both;
     int dividerPos = 50;        // percent of the usable width
     int dividerOffset = 0;      // px nudge on top of dividerPos, set by dragging
     bool dividerDraggable = true;
@@ -163,11 +185,20 @@ struct ModSettings {
     int detailsWidth = 240;
     int detailsHeight = 276;
     LayoutMode layout = LayoutMode::Full;
+    // Which half the widget shows: both, speeds only, or totals only. The
+    // right-click menu cycles through these live; the setting is the default.
+    LayoutMode display = LayoutMode::Full;
+    bool cycleOnMiddleClick = true;
     int offsetX = 12;
     int offsetY = 0;
     bool dpiScaling = true;
     bool autoTheme = true;
     DWORD manualTextColor = 0xFFFFFFFF;
+    // Per-direction colours (0 = not set, use the theme accent). Applied to the
+    // arrow AND the numbers of that half, so "download is blue" stays true even
+    // after the user recolours it.
+    DWORD downloadColor = 0;
+    DWORD uploadColor = 0;
     bool colorArrows = true;
     int bgOpacity = 0;
     // Network
@@ -238,6 +269,21 @@ static std::atomic<unsigned long long> g_pendingReset{0};  // bit0 dl, bit1 ul
 static std::atomic<float> g_dividerHitX{-1.0f};
 static std::atomic<int> g_dividerOffset{0};
 static std::atomic<bool> g_dividerDragging{false};
+// Live UI state the settings dialog cannot express as a quick toggle: which half
+// is shown, which captions are visible, and whether the arrows are hidden. Each
+// is toggled from the right-click menu (and the display mode also by middle
+// click), persisted in the mod's own storage, and seeded at init. The matching
+// settings act as defaults that are (re)applied only when the user actually
+// changes them in the settings UI - see the LastApplied checks in LoadSettings -
+// so a menu toggle is never stomped by an unrelated settings reload.
+//   g_displayMode:  0 = both, 1 = speeds only, 2 = totals only
+//   g_captionBits:  bit0 = SPEED visible, bit1 = TOTAL visible
+//   g_arrowStyle:   the arrow *shape* (never None)
+//   g_arrowsHidden: 1 = draw no arrows regardless of shape
+static std::atomic<int> g_displayMode{0};
+static std::atomic<int> g_captionBits{3};
+static std::atomic<int> g_arrowStyle{(int)ArrowStyle::Rounded};
+static std::atomic<int> g_arrowsHidden{0};
 static UINT g_taskbarCreatedMsg = 0;
 static HWINEVENTHOOK g_taskbarHook = nullptr;
 static HWND g_hookedTaskbar = nullptr;

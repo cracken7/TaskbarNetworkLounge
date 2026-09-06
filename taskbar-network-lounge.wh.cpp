@@ -2,7 +2,7 @@
 // @id              taskbar-network-lounge
 // @name            Taskbar Network Lounge
 // @description     Live network speed and traffic totals on the taskbar, in a native acrylic widget
-// @version         1.2.0
+// @version         1.4.0
 // @author          cracken7
 // @github          https://github.com/cracken7
 // @homepage        https://github.com/cracken7/TaskbarNetworkLounge
@@ -20,234 +20,127 @@
 /*
 # Taskbar Network Lounge
 
-A small network meter that sits on your taskbar and shows how fast you are
-downloading and uploading right now, plus how much data you have used in total.
-
-![Widget](https://raw.githubusercontent.com/cracken7/TaskbarNetworkLounge/main/docs/widget.png)
+A live network meter on your Windows 11 taskbar: your download and upload speed
+right now, plus how much data you have used — in a small acrylic widget that
+looks like part of Windows.
 
 ## What you see
 
-The widget is split into two halves by a thin line:
+One rectangle split into two halves by a thin line:
 
-* **SPEED** (left) — your download and upload speed at this moment.
-* **TOTAL** (right) — how much you have downloaded and uploaded in total.
+- **SPEED** (left) — how fast you are downloading and uploading **now**.
+- **TOTAL** (right) — how much you have downloaded and uploaded **in total**.
 
-A blue arrow pointing down always means download. A green arrow pointing up
-always means upload.
+In each half the top row is download (blue arrow, pointing down) and the bottom
+row is upload (green arrow, pointing up). Every number shows its own unit, so
+`MB/s` and `Mbps` are never confused.
 
-**Hover** over it for a tooltip with the same numbers plus your adapter name.
-**Left click** it to open a details panel: which adapter is being measured,
-whether it is connected, its IP address, the speeds, the totals, and a button to
-reset the totals. **Right click** it for a menu: refresh, reset the download or
-upload total, open Windows network settings, open Windhawk, or hide the widget.
+## How to use it
 
-![Details panel](https://raw.githubusercontent.com/cracken7/TaskbarNetworkLounge/main/docs/panel.png)
+- **Hover** — a tooltip with the same numbers and the adapter being measured.
+- **Left click** — a details panel: adapter, connection, IP, speeds, totals, and
+  a button to reset the totals.
+- **Middle click** — cycle what the widget shows: both, then speed only, then
+  traffic only.
+- **Right click** — a menu to switch what is shown, toggle the SPEED / TOTAL
+  captions and the arrows, reset the counters, open Windows or Windhawk settings,
+  or hide the widget. Every choice is remembered.
 
-## What makes it different
+## Why it is different
 
-### It counts your VPN correctly
+**It counts your VPN correctly.** A VPN adds a second, virtual adapter, so your
+traffic passes through two of them and most meters count a 1 GB download as 2 GB.
+This mod measures only the one adapter Windows is actually using to reach the
+internet, so nothing is ever double-counted. The totals restart when your internet
+source changes, because a total from one connection says nothing about another.
 
-This is the main reason the mod exists.
+**The numbers are honest.** Speed is measured from Windows' own byte counters,
+sampled twice and divided by the exact elapsed time — never estimated, never
+parsed from `ipconfig` or PowerShell. It matched Windows' own counters to within
+0.06% over 22 seconds.
 
-When you turn on a VPN, Windows creates a second, virtual network adapter. Your
-real traffic now passes through **both** of them: once through the VPN adapter,
-and once through your real Ethernet or Wi-Fi adapter that actually carries it out
-to the internet. Most network meters add up every adapter they can see, so a 1 GB
-download gets counted twice and shows up as 2 GB.
+**You shape it.** Twenty-two arrow designs (or none at all), any installed font,
+five weights, a separate colour for download and for upload, a draggable divider,
+a resizable widget and panel, and layouts from two columns down to a single line.
 
-This mod measures **one adapter only** — the one Windows is actually using to
-reach the internet at that moment. So:
+## It stays out of the way
 
-* Turn a VPN on, and it follows the VPN.
-* Turn it off, and it goes back to your Ethernet or Wi-Fi.
-* Nothing is ever counted twice.
+One reading per second on a background thread, and it only repaints when a number
+on screen actually changes: about 0.3-0.5% of one CPU core and 30 MB of memory,
+with no leaks. The look is native — real acrylic, rounded corners, and it follows
+your light/dark theme.
 
-And because the totals for one connection say nothing about a different one, the
-totals restart from zero whenever your internet source changes. If you would
-rather keep one running total across every connection, there is a setting to turn
-that off.
+## Arabic
 
-You can also override the choice entirely: measure only Ethernet, only Wi-Fi, all
-adapters at once, or one specific adapter you name yourself.
-
-### The numbers are honest
-
-Speed is measured by asking Windows how many bytes your adapter has moved, twice,
-and dividing the difference by the exact time that passed between the two
-readings. Nothing is estimated, and no text output from `ipconfig`, `netstat` or
-PowerShell is parsed.
-
-Units are never ambiguous, because the unit is always written next to the number:
-`MB/s` means megabytes per second, `Mbps` means megabits per second. (There are 8
-bits in a byte, so these differ by 8x — mixing them up is the most common way a
-network reading gets misread.) You choose which one you want.
-
-### You can shape how it looks
-
-* **Arrows** — five styles: rounded, solid, chevron, triangle, or inside a
-  circle. You set the size too, as a percentage of the text size.
-* **Text** — four weights (bold, black, semibold, regular) and any size you want.
-* **The dividing line** — drag it left or right with the mouse to give one side
-  more room. Only the line moves; the numbers stay exactly where they are. You can
-  also dim it, hide it completely, or reset it from the right click menu.
-* **Sizes** — the widget and the details panel are both resizable, and you can
-  move the widget along the taskbar.
-* **Colours** — it follows your Windows light/dark theme by default, or you can
-  set the text colour yourself and switch the coloured arrows off.
-* **Layout** — speeds and totals side by side, speeds only in two rows, or
-  everything on a single line.
-
-### It stays out of the way
-
-It asks Windows for the numbers once a second (you can change that) on a
-background thread, and it only redraws when a number on screen actually changes.
-Measured on a normal desktop: **0.3–0.5% of one CPU core** and about **30 MB** of
-memory, with no leaks after 1500 redraws.
-
-The look is native, not a copy of one: real acrylic glass, rounded corners, Segoe
-UI, and it follows your light/dark theme. Text rendering was tuned by measurement
-rather than by eye, so small numbers stay sharp on top of the blurred background.
-
-### It speaks Arabic
-
-Every setting name, description and dropdown option is translated. Windhawk shows
-Arabic automatically when your Windows display language is Arabic.
+Every setting, description and option is translated. Windhawk shows Arabic
+automatically when your Windows display language is Arabic.
 
 ## Requirements
 
-Windows 11 for the rounded corners and glass effect. It works on Windows 10 too,
-with square corners. If the Windows Widgets button sits in the same place and
-covers it, turn Widgets off in Taskbar Settings, or move this widget with the
-**X offset** setting.
-
-## Good to know
-
-* The widget runs in its own separate helper process, so if something ever goes
-  wrong with it, your desktop and taskbar are unaffected. Because of that you will
-  see a second "Windows Explorer" entry in Task Manager, and other mods that
-  target Explorer are loaded into that helper as well.
-* It attaches to your main taskbar.
-* A single reading can differ from Task Manager by a few percent, because both are
-  taking snapshots at slightly different moments. Measured over 22 seconds, the
-  totals agreed with Windows' own counters to within 0.06%.
-* Source code, tests and full documentation:
-  [github.com/cracken7/TaskbarNetworkLounge](https://github.com/cracken7/TaskbarNetworkLounge)
-* Design references: the way the window is created, placed above the taskbar and
-  given its glass effect follows the approach used by **Taskbar Music Lounge** and
-  **Taskbar Network Speed Indicator** (`net-speed-taskbar` by NarayanChetri), both
-  of which were read while building this. No code was copied from either.
+Windows 11 for the glass and rounded corners (it works on Windows 10 with square
+corners), and Windhawk installed. If the Widgets button covers the meter, turn
+Widgets off or move the meter with the **X offset** setting.
 
 ---
 
 # مؤشر الشبكة لشريط المهام
 
-مؤشر صغير يستقرّ على شريط المهام ويعرض سرعة التحميل والرفع في اللحظة الحالية،
-وإجمالي ما استهلكته من بيانات.
+مؤشر شبكة حيّ على شريط مهام ويندوز 11: سرعة التحميل والرفع في اللحظة الحالية،
+وإجمالي ما استهلكته من بيانات — في ودجت زجاجي صغير يبدو جزءًا من ويندوز.
 
 ## ما تراه
 
-الودجت مقسوم إلى نصفين بخط رفيع:
+مستطيل واحد مقسوم إلى نصفين بخط رفيع:
 
-* **SPEED** (يسار) — سرعة التحميل والرفع في هذه اللحظة.
-* **TOTAL** (يمين) — إجمالي ما نزّلته وما رفعته.
+- **SPEED** (يسار) — سرعة التحميل والرفع **الآن**.
+- **TOTAL** (يمين) — إجمالي ما نزّلته وما رفعته **كليًّا**.
 
-السهم الأزرق المتّجه لأسفل يعني التحميل دائمًا، والسهم الأخضر المتّجه لأعلى يعني
-الرفع دائمًا.
+وفي كل نصف السطر الأعلى للتحميل (سهم أزرق لأسفل) والأسفل للرفع (سهم أخضر لأعلى).
+وكل رقم يعرض وحدته بجانبه، فلا يخلط أحد بين `MB/s` و`Mbps`.
 
-**مرِّر الماوس** فوقه ليظهر تلميح بنفس الأرقام مع اسم الكرت. **اضغط بالزر الأيسر**
-لتفتح لوحة التفاصيل: أي كرت يُقاس، وهل هو متصل، وعنوانه، والسرعات، والإجماليات، وزر
-لتصفير الإجماليات. **اضغط بالزر الأيمن** لتظهر قائمة: تحديث، تصفير إجمالي التحميل
-أو الرفع، فتح إعدادات شبكة ويندوز، فتح Windhawk، أو إخفاء الودجت.
+## كيف تستخدمه
 
-![لوحة التفاصيل](https://raw.githubusercontent.com/cracken7/TaskbarNetworkLounge/main/docs/panel.png)
+- **المرور بالماوس** — تلميح بنفس الأرقام مع اسم الكرت المقاس.
+- **الزر الأيسر** — لوحة تفاصيل: الكرت، والاتصال، وعنوان IP، والسرعات، والإجماليات،
+  وزر لتصفير الإجماليات.
+- **الزر الأوسط** — التنقّل بين ما يعرضه الودجت: الاثنان، ثم السرعة فقط، ثم
+  الترافيك فقط.
+- **الزر الأيمن** — قائمة لتبديل المعروض، وإظهار/إخفاء عنواني SPEED وTOTAL
+  والأسهم، وتصفير العدادات، وفتح إعدادات ويندوز أو Windhawk، أو إخفاء الودجت.
+  وكل اختيار يُحفَظ.
 
 ## ما يميّزه
 
-### يحسب الـVPN بشكل صحيح
+**يحسب الـVPN بشكل صحيح.** يضيف الـVPN كرتًا ثانيًا وهميًّا، فتمرّ بياناتك عبر
+كرتين، ومعظم المؤشرات تحسّب تحميل 1 جيجا على أنه 2 جيجا. هذا المود يقيس الكرت
+الواحد الذي يستخدمه ويندوز فعلًا للوصول إلى الإنترنت، فلا يُحسَب شيء مرتين.
+وتبدأ الإجماليات من الصفر عند تغيّر مصدر الإنترنت، لأن إجمالي اتصال لا يصف آخر.
 
-هذا هو السبب الأساسي لوجود هذا المود.
+**الأرقام صادقة.** تُقاس السرعة من عدّادات بايتات ويندوز نفسها، بقراءتين والقسمة
+على الزمن الفاصل بدقّة — بلا تقدير ولا قراءة لمخرجات `ipconfig` أو PowerShell.
+وطابقت عدّادات ويندوز بفرق لا يزيد عن 0.06% على مدى 22 ثانية.
 
-عند تشغيل VPN ينشئ ويندوز كرت شبكة ثانيًا وهميًّا. وبياناتك الحقيقية تمرّ عبر
-**الاثنين**: مرة عبر كرت الـVPN، ومرة عبر كرت الإيثرنت أو الواي فاي الحقيقي الذي
-يحملها فعلًا إلى الإنترنت. ومعظم مؤشرات الشبكة تجمع كل كرت تراه، فيُحسَب تحميل
-حجمه 1 جيجا مرتين ويظهر 2 جيجا.
+**أنت الذي تشكّله.** اثنان وعشرون شكل سهم (أو بلا أسهم)، وأي خط مثبت، وخمسة أوزان،
+ولون مستقل للتحميل وآخر للرفع، وخط فاصل قابل للسحب، وودجت ولوحة قابلان لتغيير
+الحجم، وتخطيطات من عمودين إلى سطر واحد.
 
-هذا المود يقيس **كرتًا واحدًا فقط** — الكرت الذي يستخدمه ويندوز فعلًا للوصول إلى
-الإنترنت في تلك اللحظة. أي:
+## لا يثقل على جهازك
 
-* شغّل VPN فيتابعه.
-* أوقِفه فيرجع إلى الإيثرنت أو الواي فاي.
-* ولا يُحسَب أي شيء مرتين.
+قراءة واحدة كل ثانية على خيط خلفي، ولا يعيد الرسم إلا عند تغيّر رقم ظاهر فعلًا:
+حوالي 0.3-0.5% من نواة معالج واحدة و30 ميجابايت من الذاكرة، وبلا تسريب. والمظهر
+أصلي — أكريليك حقيقي وحواف دائرية، ويتبع ثيمك الفاتح/الغامق.
 
-ولأن إجماليات اتصال معيّن لا تقول شيئًا عن اتصال آخر، تبدأ الإجماليات من الصفر عند
-تغيّر مصدر الإنترنت. ولو كنت تفضّل إجماليًّا واحدًا متراكمًا عبر كل الاتصالات، فهناك
-إعداد لإيقاف هذا السلوك.
+## العربية
 
-ويمكنك أيضًا تجاوز الاختيار التلقائي بالكامل: قِس الإيثرنت وحده، أو الواي فاي وحده،
-أو كل الكروت مجتمعة، أو كرتًا محددًا تكتب اسمه بنفسك.
-
-### الأرقام صادقة
-
-تُقاس السرعة بسؤال ويندوز عن عدد البايتات التي نقلها الكرت، مرتين، ثم قسمة الفرق
-على الزمن الذي مضى بين القراءتين بدقّة. لا يوجد أي تقدير، ولا قراءة لمخرجات
-`ipconfig` أو `netstat` أو PowerShell.
-
-والوحدات لا تلتبس أبدًا لأن الوحدة مكتوبة دائمًا بجانب الرقم: `MB/s` تعني ميجابايت
-في الثانية، و`Mbps` تعني ميجابِت في الثانية. (في البايت 8 بِتات، فالفرق بينهما 8
-أضعاف — والخلط بينهما هو أشهر سبب لقراءة أرقام الشبكة قراءة خاطئة.) والاختيار لك.
-
-### تتحكّم في شكله
-
-* **الأسهم** — خمسة أشكال: دائري الأطراف، أو صلب، أو شيفرون، أو مثلث، أو داخل
-  دائرة. وتحدّد حجمها أيضًا كنسبة من حجم الخط.
-* **الخط** — أربعة أوزان (عريض، أسود، نصف عريض، عادي) وأي حجم تريده.
-* **الخط الفاصل** — اسحبه يمينًا أو شمالًا بالماوس لتوسّع أحد الجانبين. الخط وحده
-  هو الذي يتحرك، والأرقام تبقى في مكانها تمامًا. ويمكنك تخفيته أو إخفاؤه كليًّا أو
-  إرجاعه للمنتصف من قائمة الزر الأيمن.
-* **المقاسات** — الودجت ولوحة التفاصيل كلاهما قابل لتغيير الحجم، ويمكنك تحريك
-  الودجت على طول شريط المهام.
-* **الألوان** — يتبع ثيم ويندوز الفاتح/الغامق افتراضيًّا، أو حدّد لون النص بنفسك
-  وأوقِف تلوين الأسهم.
-* **التخطيط** — السرعات والإجماليات جنبًا إلى جنب، أو السرعات وحدها في سطرين، أو
-  كل شيء في سطر واحد.
-
-### لا يثقل على جهازك
-
-يسأل ويندوز عن الأرقام مرة كل ثانية (والمدة قابلة للتغيير) على خيط في الخلفية، ولا
-يعيد الرسم إلا عند تغيّر رقم ظاهر على الشاشة فعلًا. وبالقياس على جهاز عادي:
-**0.3–0.5% من نواة معالج واحدة** وحوالي **30 ميجابايت** من الذاكرة، وبلا أي تسريب
-بعد 1500 عملية رسم.
-
-والمظهر أصلي لا مجرد محاكاة: زجاج أكريليك حقيقي، وحواف دائرية، وخط Segoe UI،
-ويتبع الثيم الفاتح والغامق. وقد ضُبط رسم النص بالقياس لا بالنظر، فتبقى الأرقام
-الصغيرة حادّة فوق الخلفية الضبابية.
-
-### يتكلّم العربية
-
-كل اسم إعداد ووصفه وكل خيار في القوائم مترجم. ويعرض Windhawk العربية تلقائيًّا حين
-تكون لغة عرض ويندوز عربية.
+كل إعداد ووصف وخيار مترجم. ويعرض Windhawk العربية تلقائيًّا حين تكون لغة عرض
+ويندوز عربية.
 
 ## المتطلبات
 
-ويندوز 11 للحصول على الحواف الدائرية والتأثير الزجاجي، ويعمل على ويندوز 10 أيضًا
-بحواف قائمة. ولو كان زر Widgets في ويندوز يشغل نفس المكان ويغطّيه، فأوقِف Widgets
-من إعدادات شريط المهام، أو حرّك هذا الودجت بإعداد **الإزاحة الأفقية**.
+ويندوز 11 للزجاج والحواف الدائرية (ويعمل على ويندوز 10 بحواف قائمة)، مع تثبيت
+Windhawk. ولو غطّى زر Widgets المؤشر، فأوقِف Widgets أو حرّكه بإعداد **الإزاحة
+الأفقية**.
 
-## معلومات مفيدة
-
-* يعمل الودجت في عملية مساعدة منفصلة خاصة به، فلو حدث أي خطأ فيه لن يتأثر سطح
-  المكتب ولا شريط المهام. ولهذا سترى سطرًا ثانيًا باسم "Windows Explorer" في مدير
-  المهام، وأي مود آخر يستهدف Explorer سيُحمَّل في تلك العملية المساعدة أيضًا.
-* يرتبط بشريط المهام الرئيسي.
-* قد تختلف قراءة واحدة عن مدير المهام بنسبة قليلة لأن كلًّا منهما يأخذ لقطاته في
-  لحظات مختلفة قليلًا. وبالقياس على مدى 22 ثانية، طابقت الإجماليات عدّادات ويندوز
-  نفسها بفرق لا يزيد عن 0.06%.
-* الكود والاختبارات والشرح الكامل:
-  [github.com/cracken7/TaskbarNetworkLounge](https://github.com/cracken7/TaskbarNetworkLounge)
-* مراجع التصميم: طريقة إنشاء النافذة ووضعها فوق شريط المهام وإعطاؤها التأثير
-  الزجاجي تتبع ما يفعله مودَا **Taskbar Music Lounge** و**Taskbar Network Speed
-  Indicator** (`net-speed-taskbar` لـNarayanChetri)، وقد قرأتُ الاثنين أثناء بناء
-  هذا المود، ولم يُنسَخ أي كود من أيٍّ منهما.
 */
 // ==/WindhawkModReadme==
 
@@ -269,6 +162,11 @@ covers it, turn Widgets off in Taskbar Settings, or move this widget with the
     $description: Size of the numbers. 13 is the clearest; use 11 or 12 for a smaller widget.
     $name:ar: حجم الخط
     $description:ar: حجم الأرقام. القيمة 13 هي الأوضح، واستخدم 11 أو 12 لودجت أصغر.
+  - FontFamily: ""
+    $name: Font family
+    $description: The font used for all text. Leave empty for Segoe UI (recommended). Any installed font works, e.g. Consolas, Arial, Tahoma, Segoe UI Variable Display, Bahnschrift. If the name is wrong or the font is missing, Segoe UI is used automatically.
+    $name:ar: نوع الخط
+    $description:ar: الخط المستخدم في كل النص. اتركه فارغًا لاستخدام Segoe UI (المُستحسن). أي خط مثبت يعمل، مثل Consolas وArial وTahoma وSegoe UI Variable Display وBahnschrift. ولو كان الاسم خطأ أو الخط غير مثبت، يُستخدم Segoe UI تلقائيًّا.
   - TextWeight: bold
     $name: Text weight
     $options:
@@ -276,37 +174,87 @@ covers it, turn Widgets off in Taskbar Settings, or move this widget with the
     - black: Black (heaviest - Segoe UI Black)
     - semibold: Semibold
     - regular: Regular
+    - italic: Italic
     $name:ar: وزن الخط
     $options:ar:
     - bold: عريض (الأوضح - مُستحسن)
     - black: أسود (الأثقل - Segoe UI Black)
     - semibold: نصف عريض
     - regular: عادي
+    - italic: مائل
   - ArrowStyle: rounded
     $name: Arrow style
+    $description: The shape of the download / upload arrows - 22 shapes. Pick "No arrows" to hide them completely and keep only the numbers; you can also toggle them from the right click menu without losing your shape choice.
     $options:
     - solid: Solid arrow (stem + head)
     - rounded: Rounded arrow (soft, Fluent-like)
     - chevron: Chevron (thin, modern)
     - triangle: Triangle (compact, no stem)
     - circle: Arrow in a circle (badge)
+    - double: Double chevron (stacked)
+    - triple: Triple chevron (speed lines)
+    - outline: Outline arrow (hollow)
+    - thin: Hairline arrow (minimal)
+    - fat: Block arrow (wide, bold)
+    - head: Arrowhead only (no stem)
+    - ring: Chevron in a ring
+    - square: Arrow in a rounded square
+    - fade: Fading arrow (gradient tail)
+    - dashed: Dashed shaft arrow
+    - barb: Barbed arrow (broadhead)
+    - needle: Needle dart (sleek)
+    - dot: Arrow with tail dot
+    - feather: Fletched arrow
+    - layered: Two-tone layered arrow
+    - tray: Arrow into a tray (download/upload icon)
+    - plus: Arrow with a plus bar (+)
+    - none: No arrows (hide them)
     $name:ar: شكل السهم
+    $description:ar: شكل أسهم التحميل والرفع - 22 شكلًا. اختر "بدون أسهم" لإخفائها تمامًا والإبقاء على الأرقام فقط، ويمكنك أيضًا تبديل إظهارها من قائمة الزر الأيمن دون أن يفقدك اختيارك للشكل.
     $options:ar:
     - solid: سهم صلب (ساق + رأس)
     - rounded: سهم دائري الأطراف (ناعم، شبيه بـFluent)
     - chevron: شيفرون (رفيع وعصري)
     - triangle: مثلث (مضغوط، بدون ساق)
     - circle: سهم داخل دائرة (شعار)
+    - double: شيفرون مزدوج (مكدّس)
+    - triple: شيفرون ثلاثي (خطوط سرعة)
+    - outline: سهم مفرّغ (مخطط فقط)
+    - thin: سهم خيطي (أدنى حد)
+    - fat: سهم كتلي (عريض وبارز)
+    - head: رأس سهم فقط (بدون ساق)
+    - ring: شيفرون داخل حلقة
+    - square: سهم داخل مربع دائري
+    - fade: سهم متلاشٍ (تدرّج من الذيل)
+    - dashed: سهم بساق متقطّعة
+    - barb: سهم بخطّافات (رأس صيد)
+    - needle: سهم إبرة (رمحة انسيابية)
+    - dot: سهم بنقطة عند الذيل
+    - feather: سهم بريش
+    - layered: سهم بطبقتين (ظلّ ولون)
+    - tray: سهم في درج (أيقونة التحميل/الرفع)
+    - plus: سهم بعلامة زائد (+)
+    - none: بدون أسهم (إخفاؤها)
   - ArrowScale: 120
     $name: Arrow size (% of font size)
     $description: Arrow size relative to the text. 120 means the arrow is 1.2x as tall as the numbers. It never grows past what fits, so for really big arrows increase Panel height too. Range 60-400.
     $name:ar: حجم السهم (% من حجم الخط)
     $description:ar: حجم السهم بالنسبة للنص. القيمة 120 تعني أن السهم أطول من الأرقام بمقدار 1.2 ضعف. ولن يكبر أبدًا أكثر من المساحة المتاحة، فلو أردت أسهمًا كبيرة فعلًا زوّد ارتفاع الودجت أيضًا. المدى 60-400.
-  - ShowColumnLabels: true
-    $name: Show SPEED / TOTAL captions
-    $description: Small labels above the two halves, so it is clear which side is your current speed and which is your total usage.
-    $name:ar: إظهار عنواني SPEED / TOTAL
-    $description:ar: عنوانان صغيران فوق النصفين، ليتضح أي جانب هو سرعتك الحالية وأيهما إجمالي استهلاكك.
+  - ShowColumnLabels: both
+    $name: SPEED / TOTAL captions
+    $description: The small labels above the two halves. Choose which ones stay visible, or hide both. You can also tick them on and off from the right click menu.
+    $options:
+    - both: Show both SPEED and TOTAL
+    - speed: Show only SPEED
+    - total: Show only TOTAL
+    - none: Hide both captions
+    $name:ar: عنوانا SPEED / TOTAL
+    $description:ar: العنوانان الصغيران فوق النصفين. اختر أيهما يبقى ظاهرًا أو أخفِ الاثنين، ويمكنك أيضًا تحديدهما من قائمة الزر الأيمن.
+    $options:ar:
+    - both: إظهار SPEED وTOTAL معًا
+    - speed: إظهار SPEED فقط
+    - total: إظهار TOTAL فقط
+    - none: إخفاء الاثنين
   - DividerPos: 50
     $name: Divider position (% of width)
     $description: Where the dividing line sits, which also decides how much room each half gets. 50 splits it evenly; a lower number gives the speeds more room. Range 20-80.
@@ -343,6 +291,24 @@ covers it, turn Widgets off in Taskbar Settings, or move this widget with the
     - full: السرعات + الإجماليات (عمودان)
     - speeds: السرعات فقط (سطران)
     - oneline: السرعات فقط (سطر واحد)
+  - DisplayMode: both
+    $name: Show traffic or speed
+    $description: Which half the widget shows. "Both" keeps the two-column layout. You can also switch live from the right click menu (Show both / Show speed only / Show traffic only) or by middle clicking the widget, which cycles through the three. The widget remembers that choice across restarts; changing this setting applies its value again.
+    $options:
+    - both: Show both speed and traffic
+    - speed: Show speed only
+    - traffic: Show traffic (totals) only
+    $name:ar: عرض الترافيك أو السبيد
+    $description:ar: أي جانب يعرضه الودجت. "الاثنان" يبقي تخطيط العمودين. ويمكنك التبديل فورًا من قائمة الزر الأيمن (عرض الاثنين / السرعة فقط / الترافيك فقط) أو بالضغط الأوسط على الودجت للتنقّل بين الأشكال الثلاثة، والودجت يتذكر اختيارك بعد إعادة التشغيل. وتغيير هذا الإعداد يعيد تطبيق قيمته.
+    $options:ar:
+    - both: عرض السرعة والترافيك معًا
+    - speed: عرض السرعة فقط
+    - traffic: عرض الترافيك (الإجماليات) فقط
+  - CycleOnMiddleClick: true
+    $name: Middle click switches speed / traffic
+    $description: Press the mouse wheel (middle click) on the widget to cycle through both, speed only, and traffic only.
+    $name:ar: التبديل بالضغط الأوسط
+    $description:ar: اضغط بعجلة الماوس (الزر الأوسط) على الودجت للتنقّل بين عرض الاثنين ثم السرعة فقط ثم الترافيك فقط.
   - OffsetX: 12
     $name: X offset
     $description: How far along the taskbar the widget sits, measured from the left edge. Increase it to move the widget right, e.g. to get out from under the Widgets button. (Measured from the top edge if your taskbar is vertical.)
@@ -366,11 +332,21 @@ covers it, turn Widgets off in Taskbar Settings, or move this widget with the
     $description: Only used when Auto theme is off. Write it as 0xRRGGBB, e.g. 0xFFFFFF for white or 0xFF6060 for red.
     $name:ar: لون النص اليدوي (hex)
     $description:ar: يُستخدم فقط عند إيقاف الثيم التلقائي. اكتبه بالصيغة 0xRRGGBB، مثل 0xFFFFFF للأبيض أو 0xFF6060 للأحمر.
+  - DownloadColor: ""
+    $name: Download color (hex)
+    $description: A custom colour for the download half - its arrow AND its numbers. Leave empty (or write auto) to keep the default blue accent. Write it as 0xRRGGBB, e.g. 0xFF4D4D for red.
+    $name:ar: لون التحميل (hex)
+    $description:ar: لون مخصص لجانب التحميل — سهمه وأرقامه معًا. اتركه فارغًا (أو اكتب auto) للإبقاء على الأزرق الافتراضي. اكتبه بالصيغة 0xRRGGBB، مثل 0xFF4D4D للأحمر.
+  - UploadColor: ""
+    $name: Upload color (hex)
+    $description: A custom colour for the upload half - its arrow AND its numbers. Leave empty (or write auto) to keep the default green accent. Write it as 0xRRGGBB, e.g. 0x66CCFF for sky blue.
+    $name:ar: لون الرفع (hex)
+    $description:ar: لون مخصص لجانب الرفع — سهمه وأرقامه معًا. اتركه فارغًا (أو اكتب auto) للإبقاء على الأخضر الافتراضي. اكتبه بالصيغة 0xRRGGBB، مثل 0x66CCFF للأزرق السماوي.
   - ColorArrows: true
     $name: Colored arrows
-    $description: Blue arrow for download, green for upload. Turn this off to draw both in the text colour.
+    $description: Blue arrow for download, green for upload. Turn this off to draw both in the text colour. The Download / Upload color settings below override this for one direction at a time.
     $name:ar: أسهم ملوّنة
-    $description:ar: سهم أزرق للتحميل وأخضر للرفع. أوقِفه لرسم الاثنين بلون النص.
+    $description:ar: سهم أزرق للتحميل وأخضر للرفع. أوقِفه لرسم الاثنين بلون النص. وإعدادا لون التحميل ولون الرفع بالأسفل يستبدلان هذا اللون لاتجاه واحد.
   - BgOpacity: 0
     $name: Acrylic tint opacity (0-255)
     $description: Adds a solid tint behind the glass. Keep it at 0 for clear glass; raise it if your wallpaper makes the numbers hard to read.
@@ -558,6 +534,21 @@ static const WCHAR* kPanelClass = L"WindhawkNetworkLoungePanel";
 #define IDM_WH_SETTINGS 105
 #define IDM_HIDE 106
 #define IDM_RESET_DIVIDER 107
+#define IDM_SHOW_BOTH 108
+#define IDM_SHOW_SPEED 109
+#define IDM_SHOW_TRAFFIC 110
+#define IDM_TOGGLE_CAPTION_SPEED 111
+#define IDM_TOGGLE_CAPTION_TOTAL 112
+#define IDM_TOGGLE_ARROWS 113
+
+// mingw-w64's winuser.h predates the newer menu check flags; define the ones
+// used by the display toggles (values from the Windows SDK).
+#ifndef MF_RADIOCHECK
+#define MF_RADIOCHECK 0x00000400U
+#endif
+#ifndef MF_GROUPCHECK
+#define MF_GROUPCHECK 0x00000200U
+#endif
 
 // --- Undocumented composition / z-band APIs (same as the reference mod) ----
 typedef enum _WINDOWCOMPOSITIONATTRIB { WCA_ACCENT_POLICY = 19 } WINDOWCOMPOSITIONATTRIB;
@@ -623,19 +614,26 @@ enum class CounterMode { Session, Persistent };
 enum class LayoutMode { Full, Speeds, OneLine };
 enum class ResetRequest { None, Download, Upload, Both };
 
-enum class ArrowStyle { Solid, Chevron, Triangle, Rounded, Circle };
+enum class ArrowStyle {
+    Solid, Chevron, Triangle, Rounded, Circle,
+    Double, Triple, Outline, Thin, Fat, Head, Ring, Square, Fade, Dashed,
+    Barb, Needle, Dot, Feather, Layered, Tray, Plus, None };
 
-enum class TextWeight { Regular, Semibold, Bold, Black };
+// Which of the SPEED / TOTAL captions are painted above the two columns.
+enum class CaptionMode { Both, SpeedOnly, TotalOnly, None };
+
+enum class TextWeight { Regular, Italic, Semibold, Bold, Black };
 
 struct ModSettings {
     // Appearance
     int width = 220;
     int height = 52;
     int fontSize = 13;
+    std::wstring fontFamily = L"Segoe UI";
     TextWeight textWeight = TextWeight::Bold;
     ArrowStyle arrowStyle = ArrowStyle::Rounded;
     int arrowScale = 120;       // percent of font size
-    bool showColumnLabels = true;
+    CaptionMode captions = CaptionMode::Both;
     int dividerPos = 50;        // percent of the usable width
     int dividerOffset = 0;      // px nudge on top of dividerPos, set by dragging
     bool dividerDraggable = true;
@@ -643,11 +641,20 @@ struct ModSettings {
     int detailsWidth = 240;
     int detailsHeight = 276;
     LayoutMode layout = LayoutMode::Full;
+    // Which half the widget shows: both, speeds only, or totals only. The
+    // right-click menu cycles through these live; the setting is the default.
+    LayoutMode display = LayoutMode::Full;
+    bool cycleOnMiddleClick = true;
     int offsetX = 12;
     int offsetY = 0;
     bool dpiScaling = true;
     bool autoTheme = true;
     DWORD manualTextColor = 0xFFFFFFFF;
+    // Per-direction colours (0 = not set, use the theme accent). Applied to the
+    // arrow AND the numbers of that half, so "download is blue" stays true even
+    // after the user recolours it.
+    DWORD downloadColor = 0;
+    DWORD uploadColor = 0;
     bool colorArrows = true;
     int bgOpacity = 0;
     // Network
@@ -718,6 +725,21 @@ static std::atomic<unsigned long long> g_pendingReset{0};  // bit0 dl, bit1 ul
 static std::atomic<float> g_dividerHitX{-1.0f};
 static std::atomic<int> g_dividerOffset{0};
 static std::atomic<bool> g_dividerDragging{false};
+// Live UI state the settings dialog cannot express as a quick toggle: which half
+// is shown, which captions are visible, and whether the arrows are hidden. Each
+// is toggled from the right-click menu (and the display mode also by middle
+// click), persisted in the mod's own storage, and seeded at init. The matching
+// settings act as defaults that are (re)applied only when the user actually
+// changes them in the settings UI - see the LastApplied checks in LoadSettings -
+// so a menu toggle is never stomped by an unrelated settings reload.
+//   g_displayMode:  0 = both, 1 = speeds only, 2 = totals only
+//   g_captionBits:  bit0 = SPEED visible, bit1 = TOTAL visible
+//   g_arrowStyle:   the arrow *shape* (never None)
+//   g_arrowsHidden: 1 = draw no arrows regardless of shape
+static std::atomic<int> g_displayMode{0};
+static std::atomic<int> g_captionBits{3};
+static std::atomic<int> g_arrowStyle{(int)ArrowStyle::Rounded};
+static std::atomic<int> g_arrowsHidden{0};
 static UINT g_taskbarCreatedMsg = 0;
 static HWINEVENTHOOK g_taskbarHook = nullptr;
 static HWND g_hookedTaskbar = nullptr;
@@ -753,12 +775,79 @@ static bool StringSettingIs(const std::wstring& value, const wchar_t* expected) 
     return _wcsicmp(value.c_str(), expected) == 0;
 }
 
+// Parse "0xRRGGBB", "#RRGGBB" or "RRGGBB" into an RGB DWORD. Returns fallback on
+// empty/invalid input.
+static DWORD ParseHexColor(const std::wstring& text, DWORD fallback) {
+    if (text.empty()) {
+        return fallback;
+    }
+    const wchar_t* p = text.c_str();
+    while (*p == L' ' || *p == L'\t') {
+        p++;
+    }
+    if (*p == L'#') {
+        p++;
+    } else if (p[0] == L'0' && (p[1] == L'x' || p[1] == L'X')) {
+        p += 2;
+    }
+    wchar_t* end = nullptr;
+    unsigned long parsed = wcstoul(p, &end, 16);
+    if (end == p) {
+        return fallback;
+    }
+    return (DWORD)(parsed & 0xFFFFFF);
+}
+
+// Like ParseHexColor but treats empty / "auto" / "default" as "not set" (0), so
+// the caller can tell "user picked a colour" from "leave it to the theme".
+static DWORD ParseHexColorOrAuto(const std::wstring& text) {
+    if (text.empty() || StringSettingIs(text, L"auto") ||
+        StringSettingIs(text, L"default")) {
+        return 0;
+    }
+    return 0xFF000000 | ParseHexColor(text, 0);
+}
+
+// The right-click menu toggles a few things the settings YAML also exposes
+// (display mode, captions, arrows). Those live toggles are the source of truth
+// while the mod runs; the settings act as defaults that are applied only when
+// their value actually changes (or the first time they are ever seen). Without
+// this, any unrelated LoadSettings() - a divider drag ending, saving a different
+// setting - would stomp a mode the user picked from the menu. The last applied
+// value is remembered in the mod's own storage, same trick as the reset
+// dropdown. Returns true when the caller should apply the new setting value.
+static bool SettingChangedSinceLastApply(PCWSTR settingName,
+                                         PCWSTR lastAppliedKey,
+                                         std::wstring* currentOut) {
+    std::wstring current = ReadStringSetting(settingName);
+    WCHAR previous[64] = {};
+    Wh_GetStringValue(lastAppliedKey, previous, ARRAYSIZE(previous));
+    const bool firstTime = previous[0] == L'\0';
+    const bool changed =
+        !firstTime && _wcsicmp(previous, current.c_str()) != 0;
+    if (firstTime || changed) {
+        Wh_SetStringValue(lastAppliedKey, current.c_str());
+    }
+    *currentOut = std::move(current);
+    return firstTime || changed;
+}
+
 static void LoadSettings() {
     ModSettings s;
 
     s.width = ClampInt(Wh_GetIntSetting(L"Appearance.PanelWidth"), 80, 1200);
     s.height = ClampInt(Wh_GetIntSetting(L"Appearance.PanelHeight"), 20, 200);
     s.fontSize = ClampInt(Wh_GetIntSetting(L"Appearance.FontSize"), 6, 40);
+
+    s.fontFamily = ReadStringSetting(L"Appearance.FontFamily");
+    // Trim: a stray space makes GDI+ fail to find the family.
+    while (!s.fontFamily.empty() && (s.fontFamily.back() == L' ' || s.fontFamily.front() == L' ')) {
+        if (s.fontFamily.back() == L' ') {
+            s.fontFamily.pop_back();
+        } else {
+            s.fontFamily.erase(0, 1);
+        }
+    }
 
     std::wstring weight = ReadStringSetting(L"Appearance.TextWeight");
     if (StringSettingIs(weight, L"black")) {
@@ -767,25 +856,72 @@ static void LoadSettings() {
         s.textWeight = TextWeight::Semibold;
     } else if (StringSettingIs(weight, L"regular")) {
         s.textWeight = TextWeight::Regular;
+    } else if (StringSettingIs(weight, L"italic")) {
+        s.textWeight = TextWeight::Italic;
     } else {
         s.textWeight = TextWeight::Bold;
     }
 
-    std::wstring arrow = ReadStringSetting(L"Appearance.ArrowStyle");
-    if (StringSettingIs(arrow, L"chevron")) {
-        s.arrowStyle = ArrowStyle::Chevron;
-    } else if (StringSettingIs(arrow, L"triangle")) {
-        s.arrowStyle = ArrowStyle::Triangle;
-    } else if (StringSettingIs(arrow, L"rounded")) {
-        s.arrowStyle = ArrowStyle::Rounded;
-    } else if (StringSettingIs(arrow, L"circle")) {
-        s.arrowStyle = ArrowStyle::Circle;
-    } else {
-        s.arrowStyle = ArrowStyle::Solid;
+    // Arrow style: table-driven so the YAML option strings and the enum stay in
+    // one place. Unknown values fall back to Solid, as before. "none" is the
+    // hide-arrows choice: it sets the hidden flag but keeps the last shape, so
+    // showing them again restores what the user had.
+    static const struct { const wchar_t* name; ArrowStyle style; } kArrowStyles[] = {
+        {L"solid", ArrowStyle::Solid},       {L"chevron", ArrowStyle::Chevron},
+        {L"triangle", ArrowStyle::Triangle}, {L"rounded", ArrowStyle::Rounded},
+        {L"circle", ArrowStyle::Circle},     {L"double", ArrowStyle::Double},
+        {L"triple", ArrowStyle::Triple},     {L"outline", ArrowStyle::Outline},
+        {L"thin", ArrowStyle::Thin},         {L"fat", ArrowStyle::Fat},
+        {L"head", ArrowStyle::Head},         {L"ring", ArrowStyle::Ring},
+        {L"square", ArrowStyle::Square},     {L"fade", ArrowStyle::Fade},
+        {L"dashed", ArrowStyle::Dashed},     {L"barb", ArrowStyle::Barb},
+        {L"needle", ArrowStyle::Needle},     {L"dot", ArrowStyle::Dot},
+        {L"feather", ArrowStyle::Feather},   {L"layered", ArrowStyle::Layered},   {L"tray", ArrowStyle::Tray},
+        {L"plus", ArrowStyle::Plus},
+        {L"none", ArrowStyle::None},
+    };
+    std::wstring arrow;
+    if (SettingChangedSinceLastApply(L"Appearance.ArrowStyle",
+                                     L"LastArrowStyleApplied", &arrow)) {
+        for (const auto& entry : kArrowStyles) {
+            if (StringSettingIs(arrow, entry.name)) {
+                if (entry.style == ArrowStyle::None) {
+                    g_arrowsHidden = 1;
+                } else {
+                    g_arrowStyle = (int)entry.style;
+                    g_arrowsHidden = 0;
+                }
+                Wh_SetIntValue(L"ArrowStyle", g_arrowStyle.load());
+                Wh_SetIntValue(L"ArrowsHidden", g_arrowsHidden.load());
+                break;
+            }
+        }
     }
+    s.arrowStyle = g_arrowsHidden.load()
+                       ? ArrowStyle::None
+                       : (ArrowStyle)ClampInt(g_arrowStyle.load(), 0,
+                                              (int)ArrowStyle::Plus);
 
     s.arrowScale = ClampInt(Wh_GetIntSetting(L"Appearance.ArrowScale"), 60, 400);
-    s.showColumnLabels = Wh_GetIntSetting(L"Appearance.ShowColumnLabels") != 0;
+    std::wstring captions;
+    if (SettingChangedSinceLastApply(L"Appearance.ShowColumnLabels",
+                                     L"LastCaptionsApplied", &captions)) {
+        int bits = 3;
+        if (StringSettingIs(captions, L"speed")) {
+            bits = 1;
+        } else if (StringSettingIs(captions, L"total")) {
+            bits = 2;
+        } else if (StringSettingIs(captions, L"none")) {
+            bits = 0;
+        }
+        g_captionBits = bits;
+        Wh_SetIntValue(L"CaptionBits", bits);
+    }
+    const int captionBits = g_captionBits.load();
+    s.captions = captionBits == 3   ? CaptionMode::Both
+                 : captionBits == 1 ? CaptionMode::SpeedOnly
+                 : captionBits == 2 ? CaptionMode::TotalOnly
+                                    : CaptionMode::None;
     s.dividerPos = ClampInt(Wh_GetIntSetting(L"Appearance.DividerPos"), 20, 80);
     // The dragged offset lives in the mod's own storage, not in the settings YAML:
     // Windhawk's settings UI has no draggable control, and writing a setting from
@@ -813,30 +949,40 @@ static void LoadSettings() {
         s.layout = LayoutMode::Full;
     }
 
+    // Display mode: same live-toggle model as arrows and captions - the setting
+    // is applied only when it actually changes (or on first run), so a mode
+    // picked from the right-click menu survives unrelated LoadSettings() calls
+    // (e.g. a divider drag ending).
+    std::wstring display;
+    if (SettingChangedSinceLastApply(L"Appearance.DisplayMode",
+                                     L"LastDisplayModeApplied", &display)) {
+        int modeDefault = StringSettingIs(display, L"speed")
+                              ? 1
+                              : (StringSettingIs(display, L"traffic") ? 2 : 0);
+        g_displayMode = modeDefault;
+        Wh_SetIntValue(L"DisplayMode", modeDefault);
+    }
+    const int displayMode = ClampInt(g_displayMode.load(), 0, 2);
+    s.display = displayMode == 1 ? LayoutMode::Speeds
+                                 : (displayMode == 2 ? LayoutMode::OneLine
+                                                     : LayoutMode::Full);
+    s.cycleOnMiddleClick =
+        Wh_GetIntSetting(L"Appearance.CycleOnMiddleClick") != 0;
+
     s.offsetX = ClampInt(Wh_GetIntSetting(L"Appearance.OffsetX"), -4000, 4000);
     s.offsetY = ClampInt(Wh_GetIntSetting(L"Appearance.OffsetY"), -4000, 4000);
     s.dpiScaling = Wh_GetIntSetting(L"Appearance.DpiScaling") != 0;
     s.autoTheme = Wh_GetIntSetting(L"Appearance.AutoTheme") != 0;
 
-    std::wstring colorText = ReadStringSetting(L"Appearance.TextColor");
-    DWORD rgb = 0xFFFFFF;
-    if (!colorText.empty()) {
-        const wchar_t* p = colorText.c_str();
-        while (*p == L' ' || *p == L'\t') {
-            p++;
-        }
-        if (*p == L'#') {
-            p++;
-        } else if (p[0] == L'0' && (p[1] == L'x' || p[1] == L'X')) {
-            p += 2;
-        }
-        wchar_t* end = nullptr;
-        unsigned long parsed = wcstoul(p, &end, 16);
-        if (end != p) {
-            rgb = (DWORD)(parsed & 0xFFFFFF);
-        }
-    }
-    s.manualTextColor = 0xFF000000 | rgb;
+    s.manualTextColor = 0xFF000000 | ParseHexColor(
+                            ReadStringSetting(L"Appearance.TextColor"), 0xFFFFFF);
+
+    // Per-direction colours: empty / "auto" means "not set" (0) so the painter
+    // keeps the theme accent; any hex recolours that half (arrow + numbers).
+    s.downloadColor = ParseHexColorOrAuto(
+        ReadStringSetting(L"Appearance.DownloadColor"));
+    s.uploadColor =
+        ParseHexColorOrAuto(ReadStringSetting(L"Appearance.UploadColor"));
 
     s.colorArrows = Wh_GetIntSetting(L"Appearance.ColorArrows") != 0;
     s.bgOpacity = ClampInt(Wh_GetIntSetting(L"Appearance.BgOpacity"), 0, 255);
@@ -1883,31 +2029,68 @@ static Color BlendColor(const Color& base, BYTE alpha) {
     return Color(alpha, base.GetRed(), base.GetGreen(), base.GetBlue());
 }
 
-// Five vector styles, all drawn as paths so they stay crisp at any DPI and need
+// Vector arrow styles, all drawn as paths so they stay crisp at any DPI and need
 // no font glyph. `size` is the total arrow height; `cx`/`cy` is its centre.
-static void DrawArrow(Graphics& graphics,
-                      const Color& color,
-                      REAL cx,
-                      REAL cy,
-                      REAL size,
-                      bool down,
-                      ArrowStyle style) {
+// `style` None draws nothing (the "hide arrows" choice).
+
+// Filled stem + head polygon shared by the solid-family styles; every dimension
+// is a fraction of `size`, so the shape scales without drifting.
+static void FillStemHeadArrow(Graphics& graphics,
+                              const Brush& brush,
+                              REAL cx,
+                              REAL cy,
+                              REAL size,
+                              REAL dir,
+                              REAL headHalf,
+                              REAL headLen,
+                              REAL stemHalf) {
+    REAL half = size / 2.0f;
+    REAL tipY = cy + dir * half;
+    REAL headY = tipY - dir * headLen;
+    REAL stemY = cy - dir * half;
+    PointF points[7] = {
+        PointF(cx - stemHalf, stemY), PointF(cx + stemHalf, stemY),
+        PointF(cx + stemHalf, headY), PointF(cx + headHalf, headY),
+        PointF(cx, tipY),             PointF(cx - headHalf, headY),
+        PointF(cx - stemHalf, headY),
+    };
+    graphics.FillPolygon(&brush, points, 7);
+}
+
+// Chevron strokes meeting at the tip, rounded caps - the Fluent look.
+static void StrokeChevronArrow(Graphics& graphics,
+                               const Color& color,
+                               REAL cx,
+                               REAL cy,
+                               REAL size,
+                               REAL dir,
+                               REAL width,
+                               REAL stroke) {
+    Pen pen(color, stroke);
+    pen.SetStartCap(LineCapRound);
+    pen.SetEndCap(LineCapRound);
+    pen.SetLineJoin(LineJoinRound);
+    PointF points[3] = {PointF(cx - width, cy - dir * size * 0.28f),
+                        PointF(cx, cy + dir * size * 0.28f),
+                        PointF(cx + width, cy - dir * size * 0.28f)};
+    graphics.DrawLines(&pen, points, 3);
+}
+
+static void DrawArrowCore(Graphics& graphics,
+                          const Color& color,
+                          REAL cx,
+                          REAL cy,
+                          REAL size,
+                          bool down,
+                          ArrowStyle style) {
     REAL half = size / 2.0f;
     REAL dir = down ? 1.0f : -1.0f;
     SolidBrush brush(color);
 
     switch (style) {
         case ArrowStyle::Chevron: {
-            // Two strokes meeting at the tip, rounded caps - the Fluent look.
-            REAL w = size * 0.40f;
-            Pen pen(color, size * 0.20f);
-            pen.SetStartCap(LineCapRound);
-            pen.SetEndCap(LineCapRound);
-            pen.SetLineJoin(LineJoinRound);
-            PointF points[3] = {PointF(cx - w, cy - dir * half * 0.55f),
-                                PointF(cx, cy + dir * half * 0.55f),
-                                PointF(cx + w, cy - dir * half * 0.55f)};
-            graphics.DrawLines(&pen, points, 3);
+            StrokeChevronArrow(graphics, color, cx, cy, size, dir,
+                               size * 0.40f, size * 0.20f);
             return;
         }
 
@@ -1977,10 +2160,29 @@ static void DrawArrow(Graphics& graphics,
             return;
         }
 
-        case ArrowStyle::Solid:
-        default: {
-            // Stem + wide head as one filled polygon: the sturdiest shape, the
-            // easiest to read at small sizes.
+        case ArrowStyle::Double: {
+            // Two stacked chevrons: reads as "fast" without a stem.
+            StrokeChevronArrow(graphics, color, cx, cy - dir * size * 0.17f,
+                               size, dir, size * 0.34f, size * 0.15f);
+            StrokeChevronArrow(graphics, color, cx, cy + dir * size * 0.17f,
+                               size, dir, size * 0.34f, size * 0.15f);
+            return;
+        }
+
+        case ArrowStyle::Triple: {
+            // Three stacked chevrons - the classic speed-lines mark.
+            StrokeChevronArrow(graphics, color, cx, cy - dir * size * 0.28f,
+                               size, dir, size * 0.32f, size * 0.13f);
+            StrokeChevronArrow(graphics, color, cx, cy, size, dir,
+                               size * 0.32f, size * 0.13f);
+            StrokeChevronArrow(graphics, color, cx, cy + dir * size * 0.28f,
+                               size, dir, size * 0.32f, size * 0.13f);
+            return;
+        }
+
+        case ArrowStyle::Outline: {
+            // The solid silhouette stroked only - hollow, light on the eye.
+            GraphicsPath path;
             REAL headHalf = size * 0.40f;
             REAL headLen = size * 0.48f;
             REAL stemHalf = size * 0.145f;
@@ -1993,10 +2195,322 @@ static void DrawArrow(Graphics& graphics,
                 PointF(cx, tipY),             PointF(cx - headHalf, headY),
                 PointF(cx - stemHalf, headY),
             };
-            graphics.FillPolygon(&brush, points, 7);
+            path.AddClosedCurve(points, 7, 0.0f);
+            Pen pen(color, size * 0.11f);
+            pen.SetLineJoin(LineJoinRound);
+            graphics.DrawPath(&pen, &path);
+            return;
+        }
+
+        case ArrowStyle::Thin: {
+            // Hairline stem + narrow chevron head: the quietest arrow here.
+            Pen pen(color, size * 0.09f);
+            pen.SetStartCap(LineCapRound);
+            pen.SetEndCap(LineCapRound);
+            graphics.DrawLine(&pen, cx, cy - dir * half, cx,
+                              cy + dir * half * 0.75f);
+            PointF head[3] = {PointF(cx - size * 0.26f, cy + dir * half * 0.24f),
+                              PointF(cx, cy + dir * half),
+                              PointF(cx + size * 0.26f, cy + dir * half * 0.24f)};
+            graphics.DrawLines(&pen, head, 3);
+            return;
+        }
+
+        case ArrowStyle::Fat: {
+            // Wide head, thick stem: the loudest arrow here, good on bright
+            // wallpapers where thin strokes wash out.
+            FillStemHeadArrow(graphics, brush, cx, cy, size, dir,
+                              size * 0.50f, size * 0.52f, size * 0.22f);
+            return;
+        }
+
+        case ArrowStyle::Head: {
+            // Just the head, floating: minimal ink, still unmistakable.
+            REAL w = size * 0.42f;
+            Pen pen(color, size * 0.16f);
+            pen.SetStartCap(LineCapRound);
+            pen.SetEndCap(LineCapRound);
+            pen.SetLineJoin(LineJoinRound);
+            PointF head[3] = {PointF(cx - w, cy - dir * size * 0.22f),
+                              PointF(cx, cy + dir * size * 0.22f),
+                              PointF(cx + w, cy - dir * size * 0.22f)};
+            graphics.DrawLines(&pen, head, 3);
+            return;
+        }
+
+        case ArrowStyle::Ring: {
+            // Chevron inside a thin ring - badge-like without the filled disc.
+            REAL r = size * 0.5f;
+            Pen ring(color, size * 0.08f);
+            graphics.DrawEllipse(&ring, cx - r, cy - r, r * 2, r * 2);
+            StrokeChevronArrow(graphics, color, cx, cy + dir * size * 0.02f,
+                               size, dir, size * 0.24f, size * 0.11f);
+            return;
+        }
+
+        case ArrowStyle::Square: {
+            // Circle badge's sibling: rounded square, tinted fill.
+            REAL r = size * 0.5f;
+            REAL sq = r * 1.7f;
+            REAL sqX = cx - sq / 2.0f;
+            REAL sqY = cy - sq / 2.0f;
+            GraphicsPath box;
+            AddRoundedRect(box, sqX, sqY, sq, sq, size * 0.22f);
+            SolidBrush fill(BlendColor(color, 62));
+            graphics.FillPath(&fill, &box);
+            Pen edge(BlendColor(color, 150), size * 0.07f);
+            graphics.DrawPath(&edge, &box);
+            StrokeChevronArrow(graphics, color, cx, cy + dir * size * 0.02f,
+                               size, dir, size * 0.22f, size * 0.11f);
+            return;
+        }
+
+        case ArrowStyle::Fade: {
+            // Solid head, stem drawn in segments that thin out toward the tail.
+            FillStemHeadArrow(graphics, brush, cx, cy, size, dir,
+                              size * 0.40f, size * 0.48f, size * 0.145f);
+            REAL stemY0 = cy - dir * half;
+            REAL stemY1 = cy - dir * half + dir * size * 0.50f;
+            const int kSegs = 6;
+            for (int i = 0; i < kSegs; i++) {
+                REAL t0 = (REAL)i / kSegs;
+                REAL t1 = (REAL)(i + 1) / kSegs;
+                BYTE a = (BYTE)(255.0f * (0.15f + 0.85f * t1));
+                Pen seg(BlendColor(color, a), size * (0.05f + 0.11f * t1));
+                seg.SetStartCap(LineCapRound);
+                seg.SetEndCap(LineCapRound);
+                graphics.DrawLine(&seg, cx, stemY0 + (stemY1 - stemY0) * t0, cx,
+                                  stemY0 + (stemY1 - stemY0) * t1);
+            }
+            return;
+        }
+
+        case ArrowStyle::Dashed: {
+            // Solid head, dashed shaft. The shaft runs from the tail toward the
+            // head; lo/hi are normalised so the loop always moves downward in
+            // screen space whatever direction the arrow points.
+            FillStemHeadArrow(graphics, brush, cx, cy, size, dir,
+                              size * 0.40f, size * 0.48f, size * 0.145f);
+            REAL dash = size * 0.13f;
+            REAL shaftA = cy - dir * half;
+            REAL shaftB = shaftA + dir * size * 0.52f;
+            REAL lo = shaftA < shaftB ? shaftA : shaftB;
+            REAL hi = shaftA < shaftB ? shaftB : shaftA;
+            for (REAL t = lo; t < hi; t += dash * 2.0f) {
+                REAL segEnd = t + dash;
+                if (segEnd > hi) {
+                    segEnd = hi;
+                }
+                SolidBrush dashBrush(color);
+                graphics.FillRectangle(&dashBrush, cx - size * 0.10f, t,
+                                       size * 0.20f, segEnd - t);
+            }
+            return;
+        }
+
+        case ArrowStyle::Barb: {
+            // Broadhead: the head base sweeps into backward barbs.
+            REAL headHalf = size * 0.46f;
+            REAL headLen = size * 0.55f;
+            REAL stemHalf = size * 0.11f;
+            REAL tipY = cy + dir * half;
+            REAL headY = tipY - dir * headLen;
+            REAL barbY = headY + dir * headLen * 0.45f;
+            REAL stemY = cy - dir * half;
+            PointF points[9] = {
+                PointF(cx - stemHalf, stemY), PointF(cx + stemHalf, stemY),
+                PointF(cx + stemHalf, headY), PointF(cx + headHalf, headY),
+                PointF(cx + stemHalf * 1.6f, barbY),
+                PointF(cx, tipY),
+                PointF(cx - stemHalf * 1.6f, barbY),
+                PointF(cx - headHalf, headY),
+                PointF(cx - stemHalf, headY),
+            };
+            graphics.FillPolygon(&brush, points, 9);
+            return;
+        }
+
+        case ArrowStyle::Needle: {
+            // A slim spearhead: all tip, no stem.
+            REAL w = size * 0.20f;
+            REAL tipY = cy + dir * half;
+            REAL tailY = cy - dir * half;
+            REAL shoulderY = tipY - dir * size * 0.55f;
+            PointF points[4] = {
+                PointF(cx, tipY), PointF(cx + w, shoulderY),
+                PointF(cx, tailY), PointF(cx - w, shoulderY),
+            };
+            graphics.FillPolygon(&brush, points, 4);
+            return;
+        }
+
+        case ArrowStyle::Dot: {
+            // Rounded stem + head with a dot at the tail - reads as a pin.
+            REAL stem = size * 0.13f;
+            REAL inset = stem / 2.0f;
+            REAL top = cy - dir * (half - size * 0.16f);
+            REAL tip = cy + dir * (half - inset);
+            Pen stemPen(color, stem);
+            stemPen.SetStartCap(LineCapRound);
+            stemPen.SetEndCap(LineCapRound);
+            graphics.DrawLine(&stemPen, cx, top, cx, cy + dir * half * 0.35f);
+            REAL w = size * 0.28f - inset;
+            Pen headPen(color, stem);
+            headPen.SetStartCap(LineCapRound);
+            headPen.SetEndCap(LineCapRound);
+            headPen.SetLineJoin(LineJoinRound);
+            PointF head[3] = {PointF(cx - w, tip - dir * (w + inset)),
+                              PointF(cx, tip),
+                              PointF(cx + w, tip - dir * (w + inset))};
+            graphics.DrawLines(&headPen, head, 3);
+            REAL dotR = size * 0.13f;
+            graphics.FillEllipse(&brush, cx - dotR, top - dotR, dotR * 2,
+                                 dotR * 2);
+            return;
+        }
+
+        case ArrowStyle::Feather: {
+            // Solid silhouette plus two fletch strokes at the tail.
+            FillStemHeadArrow(graphics, brush, cx, cy, size, dir,
+                              size * 0.38f, size * 0.46f, size * 0.13f);
+            Pen pen(color, size * 0.09f);
+            pen.SetStartCap(LineCapRound);
+            pen.SetEndCap(LineCapRound);
+            REAL stemY = cy - dir * half;
+            graphics.DrawLine(&pen, cx, stemY + dir * size * 0.06f,
+                              cx - size * 0.22f, stemY + dir * size * 0.24f);
+            graphics.DrawLine(&pen, cx, stemY + dir * size * 0.06f,
+                              cx + size * 0.22f, stemY + dir * size * 0.24f);
+            return;
+        }
+
+        case ArrowStyle::Layered: {
+            // A dim copy offset behind the solid one - a soft drop shadow that
+            // gives the arrow depth on flat backgrounds.
+            REAL off = size * 0.10f;
+            FillStemHeadArrow(graphics, SolidBrush(BlendColor(color, 80)),
+                              cx - off, cy - off * 0.6f, size, dir,
+                              size * 0.40f, size * 0.48f, size * 0.145f);
+            FillStemHeadArrow(graphics, brush, cx, cy, size, dir,
+                              size * 0.40f, size * 0.48f, size * 0.145f);
+            return;
+        }
+
+        case ArrowStyle::Tray: {
+            // The Windows "download/upload" mark: a stem + head arrow feeding a
+            // tray - a horizontal base line with short upturned ends. For the
+            // download arrow the tip points INTO the tray; for upload the arrow
+            // rises OUT of it, so the pair reads as in / out at a glance.
+            REAL stem = size * 0.15f;
+            REAL inset = stem / 2.0f;
+            REAL trayY = cy + dir * half;
+            REAL trayW = size * 0.42f;
+            REAL trayLip = size * 0.16f;
+            Pen tray(color, stem * 0.85f);
+            tray.SetStartCap(LineCapRound);
+            tray.SetEndCap(LineCapRound);
+            tray.SetLineJoin(LineJoinRound);
+            PointF trayPts[4] = {
+                PointF(cx - trayW, trayY - dir * trayLip),
+                PointF(cx - trayW, trayY),
+                PointF(cx + trayW, trayY),
+                PointF(cx + trayW, trayY - dir * trayLip),
+            };
+            graphics.DrawLines(&tray, trayPts, 4);
+            // The arrow itself sits above the tray, shortened so it never
+            // touches the base line.
+            REAL arrowSpan = size * 0.66f;
+            REAL aHalf = arrowSpan / 2.0f;
+            REAL aCy = cy - dir * (half - aHalf - size * 0.06f);
+            REAL tip = aCy + dir * (aHalf - inset);
+            REAL top = aCy - dir * (aHalf - inset);
+            Pen stemPen(color, stem);
+            stemPen.SetStartCap(LineCapRound);
+            stemPen.SetEndCap(LineCapRound);
+            graphics.DrawLine(&stemPen, cx, top, cx, aCy + dir * aHalf * 0.3f);
+            REAL w = size * 0.26f - inset;
+            Pen headPen(color, stem);
+            headPen.SetStartCap(LineCapRound);
+            headPen.SetEndCap(LineCapRound);
+            headPen.SetLineJoin(LineJoinRound);
+            PointF head[3] = {PointF(cx - w, tip - dir * (w + inset)),
+                              PointF(cx, tip),
+                              PointF(cx + w, tip - dir * (w + inset))};
+            graphics.DrawLines(&headPen, head, 3);
+            return;
+        }
+
+        case ArrowStyle::Plus: {
+            // A plus sign carrying the arrow: the vertical stroke IS the shaft
+            // (head at its tip), and a horizontal bar crosses it - so download
+            // reads as a "+" pointing down and upload as a "+" pointing up.
+            REAL bar = size * 0.16f;
+            REAL inset = bar / 2.0f;
+            REAL tip = cy + dir * (half - inset);
+            REAL tail = cy - dir * (half - inset);
+            Pen shaft(color, bar);
+            shaft.SetStartCap(LineCapRound);
+            shaft.SetEndCap(LineCapRound);
+            graphics.DrawLine(&shaft, cx, tail, cx, cy + dir * half * 0.30f);
+            // The cross-bar sits toward the tail so the head stays dominant.
+            REAL barY = cy - dir * half * 0.30f;
+            REAL barW = size * 0.34f;
+            graphics.DrawLine(&shaft, cx - barW, barY, cx + barW, barY);
+            // Chevron head on the tip.
+            REAL w = size * 0.28f - inset;
+            Pen headPen(color, bar);
+            headPen.SetStartCap(LineCapRound);
+            headPen.SetEndCap(LineCapRound);
+            headPen.SetLineJoin(LineJoinRound);
+            PointF head[3] = {PointF(cx - w, tip - dir * (w + inset)),
+                              PointF(cx, tip),
+                              PointF(cx + w, tip - dir * (w + inset))};
+            graphics.DrawLines(&headPen, head, 3);
+            return;
+        }
+
+        case ArrowStyle::None:
+            // "Hide arrows": nothing is drawn and the caller collapses the
+            // gutter so the numbers move left into the freed space.
+            return;
+
+        case ArrowStyle::Solid:
+        default: {
+            // Stem + wide head as one filled polygon: the sturdiest shape, the
+            // easiest to read at small sizes.
+            FillStemHeadArrow(graphics, brush, cx, cy, size, dir,
+                              size * 0.40f, size * 0.48f, size * 0.145f);
             return;
         }
     }
+}
+
+static void DrawArrow(Graphics& graphics,
+                      const Color& color,
+                      REAL cx,
+                      REAL cy,
+                      REAL size,
+                      bool down,
+                      ArrowStyle style) {
+    DrawArrowCore(graphics, color, cx, cy, size, down, style);
+}
+
+// Horizontal space an arrow reserves in front of its number. None collapses it
+// to zero so the text slides left into the freed space instead of leaving a
+// gap where no glyph is drawn.
+static REAL ArrowGutter(ArrowStyle style, REAL arrowSize, REAL arrowGap) {
+    return style == ArrowStyle::None ? 0.0f : arrowSize + arrowGap;
+}
+
+// The arrow style as it is RIGHT NOW: the shape from the setting/menu, or None
+// when the "Show arrows" toggle is off. Painters use this instead of the
+// settings snapshot so a menu toggle takes effect on the next repaint without a
+// settings reload.
+static ArrowStyle LiveArrowStyle() {
+    if (g_arrowsHidden.load()) {
+        return ArrowStyle::None;
+    }
+    return (ArrowStyle)ClampInt(g_arrowStyle.load(), 0, (int)ArrowStyle::Plus);
 }
 
 // Text on acrylic has no guaranteed contrast, so every string is drawn twice: a
@@ -2085,13 +2599,27 @@ static REAL MeasureNumberColumn(Graphics& graphics,
 
 // Segoe UI Semibold/Black are separate FAMILIES, not style bits, so the weight
 // setting has to pick a family name as well as a style flag. Falls back to plain
-// "Segoe UI" + FontStyleBold if a family is missing.
+// "Segoe UI" + FontStyleBold if a family is missing. When the user sets a custom
+// font family, the weight maps onto that family's style bits instead (Semibold
+// and Black only exist as separate Segoe families).
 struct ResolvedFont {
     std::wstring family;
     INT style;
 };
 
-static ResolvedFont ResolveWeight(TextWeight weight) {
+static ResolvedFont ResolveWeight(TextWeight weight,
+                                  const std::wstring& customFamily) {
+    if (!customFamily.empty() && customFamily != kFontName) {
+        switch (weight) {
+            case TextWeight::Regular:
+                return {customFamily, FontStyleRegular};
+            case TextWeight::Italic:
+                return {customFamily, FontStyleItalic};
+            case TextWeight::Bold:
+            default:
+                return {customFamily, FontStyleBold};
+        }
+    }
     switch (weight) {
         case TextWeight::Black:
             return {L"Segoe UI Black", FontStyleRegular};
@@ -2099,6 +2627,8 @@ static ResolvedFont ResolveWeight(TextWeight weight) {
             return {L"Segoe UI Semibold", FontStyleRegular};
         case TextWeight::Regular:
             return {kFontName, FontStyleRegular};
+        case TextWeight::Italic:
+            return {kFontName, FontStyleItalic};
         case TextWeight::Bold:
         default:
             return {kFontName, FontStyleBold};
@@ -2159,6 +2689,16 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
         downColor = light ? Color(255, 0, 82, 168) : Color(255, 140, 224, 255);
         upColor = light ? Color(255, 13, 106, 13) : Color(255, 138, 238, 158);
     }
+    // A manual per-direction colour wins over both the text colour and the
+    // accent, and recolours the numbers of that half too - not just the arrow.
+    const bool customDown = s.downloadColor != 0;
+    const bool customUp = s.uploadColor != 0;
+    if (customDown) {
+        downColor = Color(s.downloadColor);
+    }
+    if (customUp) {
+        upColor = Color(s.uploadColor);
+    }
 
     // Hover background for the widget body only - not for the divider grab zone,
     // which gets its own highlight on the line itself.
@@ -2172,13 +2712,13 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
 
     std::unique_ptr<FontFamily> family;
     INT weight = FontStyleBold;
-    MakeFontFamily(ResolveWeight(s.textWeight), family, weight);
+    MakeFontFamily(ResolveWeight(s.textWeight, s.fontFamily), family, weight);
     FontFamily& fontFamily = *family;
     // Captions keep a fixed weight so the SPEED/TOTAL hierarchy does not collapse
     // when the user picks a lighter weight for the values.
     std::unique_ptr<FontFamily> captionFamily;
     INT captionWeight = FontStyleBold;
-    MakeFontFamily(ResolveWeight(TextWeight::Bold), captionFamily, captionWeight);
+    MakeFontFamily(ResolveWeight(TextWeight::Bold, s.fontFamily), captionFamily, captionWeight);
     REAL fontSize = (REAL)(s.fontSize * scale);
     Font fontValue(&fontFamily, fontSize, weight, UnitPixel);
     Font fontTotal(&fontFamily, fontSize * 0.94f, weight, UnitPixel);
@@ -2198,11 +2738,22 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
                           StringFormatFlagsNoClip);
 
     const REAL padding = (REAL)(9.0 * scale);
+    // Live display state, read from the atomics (not the settings snapshot) so a
+    // right-click toggle repaints correctly without a settings reload:
+    //   displayMode: 0 = both halves, 1 = speeds only, 2 = totals only
+    //   captionBits: bit0 = SPEED visible, bit1 = TOTAL visible
+    //   arrowsHidden / arrowStyle: the arrow shape, or none at all
+    const int displayMode = ClampInt(g_displayMode.load(), 0, 2);
+    const int captionBits = ClampInt(g_captionBits.load(), 0, 3);
+    const ArrowStyle arrowStyle = LiveArrowStyle();
+    // Captions follow their own bits in every display mode: in speeds-only the
+    // SPEED label can still show, in totals-only the TOTAL label can still show.
+    const bool showLabels = captionBits != 0;
     // Row centres are a fixed fraction of the height apart; the arrow is capped to
     // that distance minus a small gap, so a large ArrowScale can never make the
     // down/up glyphs touch or spill outside the widget. Bigger arrows therefore
     // need a taller widget (Panel height), which the setting description says.
-    REAL rowPitch = (REAL)height * (s.showColumnLabels ? 0.36f : 0.44f);
+    REAL rowPitch = (REAL)height * (showLabels ? 0.36f : 0.44f);
     REAL arrowLimit = rowPitch - (REAL)(4.0 * scale);
     if (arrowLimit < 4.0f) {
         arrowLimit = 4.0f;
@@ -2229,30 +2780,72 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
     std::wstring downTotal = FormatBytes(snapshot.totalDown, s);
     std::wstring upTotal = FormatBytes(snapshot.totalUp, s);
 
+    const REAL gutter = ArrowGutter(arrowStyle, arrowSize, arrowGap);
+
+    // When a direction has a manual colour, its numbers take that colour too
+    // (slightly dimmed for the totals so the hierarchy survives); otherwise the
+    // shared text brushes are used as before.
+    SolidBrush downTextBrush(downColor);
+    SolidBrush upTextBrush(upColor);
+    SolidBrush downTotalBrush(BlendColor(Color(downColor.GetRed(), downColor.GetGreen(), downColor.GetBlue()), 250));
+    SolidBrush upTotalBrush(BlendColor(Color(upColor.GetRed(), upColor.GetGreen(), upColor.GetBlue()), 250));
+
     auto drawRow = [&](REAL x, REAL centerY, bool down, const std::wstring& text,
-                       Font& font, SolidBrush& brush, REAL maxWidth) {
+                       Font& font, SolidBrush& brush, REAL maxWidth,
+                       bool isTotal = false) {
         DrawArrow(graphics, down ? downColor : upColor, x + arrowSize / 2.0f,
-                  centerY, arrowSize, down, s.arrowStyle);
-        RectF textRect(x + arrowSize + arrowGap, centerY - fontSize,
-                       maxWidth - arrowSize - arrowGap, fontSize * 2.0f);
-        DrawSharpString(graphics, text.c_str(), font, textRect, format, brush,
+                  centerY, arrowSize, down, arrowStyle);
+        RectF textRect(x + gutter, centerY - fontSize, maxWidth - gutter,
+                       fontSize * 2.0f);
+        SolidBrush* use = &brush;
+        if (customDown && down) {
+            use = isTotal ? &downTotalBrush : &downTextBrush;
+        } else if (customUp && !down) {
+            use = isTotal ? &upTotalBrush : &upTextBrush;
+        }
+        DrawSharpString(graphics, text.c_str(), font, textRect, format, *use,
                         light, shadowOffset);
     };
 
-    if (s.layout == LayoutMode::OneLine) {
-        REAL centerY = height / 2.0f;
-        REAL columnWidth = ((REAL)width - padding * 2.0f) / 2.0f;
-        drawRow(padding, centerY, true, downSpeed, fontValue, textBrush,
-                columnWidth);
-        drawRow(padding + columnWidth, centerY, false, upSpeed, fontValue,
-                textBrush, columnWidth);
-        return;
+    // Speeds-only views (the LayoutMode setting, or display mode 1).
+    if (displayMode == 1 || s.layout == LayoutMode::OneLine) {
+        if (s.layout == LayoutMode::OneLine && displayMode != 2) {
+            REAL centerY = height / 2.0f;
+            REAL columnWidth = ((REAL)width - padding * 2.0f) / 2.0f;
+            drawRow(padding, centerY, true, downSpeed, fontValue, textBrush,
+                    columnWidth);
+            drawRow(padding + columnWidth, centerY, false, upSpeed, fontValue,
+                    textBrush, columnWidth);
+            return;
+        }
+        if (displayMode != 2) {
+            REAL speedTopY = height * 0.30f;
+            REAL speedBottomY = height * 0.72f;
+            if (showLabels && (captionBits & 1)) {
+                REAL captionY = height * 0.16f;
+                speedTopY = height * 0.46f;
+                speedBottomY = height * 0.79f;
+                DrawSharpString(graphics, L"SPEED", fontCaption,
+                                RectF(padding, captionY - fontSize * 0.6f,
+                                      (REAL)width - padding * 2.0f,
+                                      fontSize * 1.2f),
+                                format, captionBrush, light, shadowOffset);
+            }
+            REAL columnWidth = (REAL)width - padding * 2.0f;
+            drawRow(padding, speedTopY, true, downSpeed, fontValue, textBrush,
+                    columnWidth);
+            drawRow(padding, speedBottomY, false, upSpeed, fontValue, textBrush,
+                    columnWidth);
+            return;
+        }
+        // fall through: display mode 2 (totals) uses the full-layout geometry
+        // below with the speed column hidden.
     }
 
     REAL topY = height * 0.30f;
     REAL bottomY = height * 0.72f;
 
-    if (s.layout == LayoutMode::Speeds) {
+    if (s.layout == LayoutMode::Speeds && displayMode == 0) {
         REAL columnWidth = (REAL)width - padding * 2.0f;
         drawRow(padding, topY, true, downSpeed, fontValue, textBrush, columnWidth);
         drawRow(padding, bottomY, false, upSpeed, fontValue, textBrush,
@@ -2264,33 +2857,56 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
     // captions and a divider so the two groups can't be confused. DividerPos
     // decides how the usable width is split; the dragged offset shifts the LINE
     // ONLY, so grabbing it never moves the text with it.
+    //
+    // Display mode 1 hides the totals column (speeds fill the width), mode 2
+    // hides the speeds column (totals fill the width).
+    const bool showSpeedCol = displayMode != 2;
+    const bool showTotalCol = displayMode != 1;
     REAL columnGap = (REAL)(10.0 * scale);
-    REAL usable = (REAL)width - padding * 2.0f - columnGap;
+    REAL usable = (REAL)width - padding * 2.0f -
+                  (showSpeedCol && showTotalCol ? columnGap : 0.0f);
     REAL leftWidth = usable * (s.dividerPos / 100.0f);
     REAL columnWidth = usable - leftWidth;
     REAL rightX = padding + leftWidth + columnGap;
+    if (!showSpeedCol) {
+        // Totals-only: the totals column takes the whole width and the TOTAL
+        // caption sits at the left padding, not at the (now meaningless) split.
+        leftWidth = usable;
+        columnWidth = usable;
+        rightX = padding;
+    } else if (!showTotalCol) {
+        leftWidth = usable;
+        columnWidth = 0;
+    }
 
-    if (s.showColumnLabels) {
+    const bool showSpeedLabel = (captionBits & 1) != 0 && showLabels && showSpeedCol;
+    const bool showTotalLabel = (captionBits & 2) != 0 && showLabels && showTotalCol;
+    if (showSpeedLabel || showTotalLabel) {
         REAL captionY = height * 0.16f;
         topY = height * 0.46f;
         bottomY = height * 0.79f;
 
-        DrawSharpString(graphics, L"SPEED", fontCaption,
-                        RectF(padding, captionY - fontSize * 0.6f, leftWidth,
-                              fontSize * 1.2f),
-                        format, captionBrush, light, shadowOffset);
-        DrawSharpString(graphics, L"TOTAL", fontCaption,
-                        RectF(rightX, captionY - fontSize * 0.6f, columnWidth,
-                              fontSize * 1.2f),
-                        format, captionBrush, light, shadowOffset);
+        if (showSpeedLabel) {
+            DrawSharpString(graphics, L"SPEED", fontCaption,
+                            RectF(padding, captionY - fontSize * 0.6f, leftWidth,
+                                  fontSize * 1.2f),
+                            format, captionBrush, light, shadowOffset);
+        }
+        if (showTotalLabel) {
+            DrawSharpString(graphics, L"TOTAL", fontCaption,
+                            RectF(rightX, captionY - fontSize * 0.6f, columnWidth,
+                                  fontSize * 1.2f),
+                            format, captionBrush, light, shadowOffset);
+        }
     }
 
     // Divider. Its x is the split point plus the user's dragged offset - and the
     // offset is applied HERE ONLY, never to leftWidth/rightX, so dragging the line
     // moves nothing but the line. The painted x is published for the hit test so
     // the grab zone always matches what is on screen.
+    // Only meaningful while both columns are on screen.
     REAL dividerX = padding + leftWidth + columnGap / 2.0f;
-    if (s.dividerDraggable) {
+    if (showSpeedCol && showTotalCol && s.dividerDraggable) {
         // Read the LIVE atomic, not the settings snapshot: during a drag the
         // offset changes on every WM_MOUSEMOVE and settings are only reloaded on
         // mouse-up, so using s.dividerOffset here would make the line lag behind
@@ -2307,9 +2923,11 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
             dividerX = maxX;
         }
     }
-    g_dividerHitX = (float)dividerX;
+    g_dividerHitX = (showSpeedCol && showTotalCol) ? (float)dividerX : -1.0f;
 
-    if (s.dividerOpacity > 0 || (s.dividerDraggable && g_widgetHover.load() == 2)) {
+    if (showSpeedCol && showTotalCol &&
+        (s.dividerOpacity > 0 ||
+         (s.dividerDraggable && g_widgetHover.load() == 2))) {
         // While being dragged (or hovered) the line brightens, so it is obvious
         // that it is the thing being grabbed even at opacity 0.
         BYTE alpha = (BYTE)s.dividerOpacity;
@@ -2322,15 +2940,23 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
             thickness = (REAL)(2.0 * scale);
         }
         Pen divider(BlendColor(textColor, alpha), thickness);
-        REAL top = s.showColumnLabels ? height * 0.10f : height * 0.20f;
-        REAL bottom = s.showColumnLabels ? height * 0.90f : height * 0.80f;
+        REAL top = showLabels ? height * 0.10f : height * 0.20f;
+        REAL bottom = showLabels ? height * 0.90f : height * 0.80f;
         graphics.DrawLine(&divider, dividerX, top, dividerX, bottom);
     }
 
-    drawRow(padding, topY, true, downSpeed, fontValue, textBrush, leftWidth);
-    drawRow(padding, bottomY, false, upSpeed, fontValue, textBrush, leftWidth);
-    drawRow(rightX, topY, true, downTotal, fontTotal, dimBrush, columnWidth);
-    drawRow(rightX, bottomY, false, upTotal, fontTotal, dimBrush, columnWidth);
+    if (showSpeedCol) {
+        drawRow(padding, topY, true, downSpeed, fontValue, textBrush, leftWidth);
+        drawRow(padding, bottomY, false, upSpeed, fontValue, textBrush,
+                leftWidth);
+    }
+    if (showTotalCol) {
+        drawRow(showSpeedCol ? rightX : padding, topY, true, downTotal, fontTotal,
+                dimBrush, showSpeedCol ? columnWidth : leftWidth, true);
+        drawRow(showSpeedCol ? rightX : padding, bottomY, false, upTotal,
+                fontTotal, dimBrush, showSpeedCol ? columnWidth : leftWidth,
+                true);
+    }
 }
 
 // --- Details panel painting ------------------------------------------------
@@ -2444,16 +3070,25 @@ static void DrawDetailsPanel(HDC hdc, int width, int height, HWND hwnd) {
     Color upColor = s.colorArrows
                         ? (light ? Color(255, 13, 106, 13) : Color(255, 138, 238, 158))
                         : textColor;
+    // Manual per-direction colours win, exactly as in the widget.
+    const bool customDown = s.downloadColor != 0;
+    const bool customUp = s.uploadColor != 0;
+    if (customDown) {
+        downColor = Color(s.downloadColor);
+    }
+    if (customUp) {
+        upColor = Color(s.uploadColor);
+    }
 
     std::unique_ptr<FontFamily> familyPtr;
     INT weight = FontStyleBold;
-    MakeFontFamily(ResolveWeight(s.textWeight), familyPtr, weight);
+    MakeFontFamily(ResolveWeight(s.textWeight, s.fontFamily), familyPtr, weight);
     FontFamily& fontFamily = *familyPtr;
     // Captions keep a fixed bold weight so the section hierarchy survives a
     // lighter weight choice for the values.
     std::unique_ptr<FontFamily> captionFamilyPtr;
     INT captionWeight = FontStyleBold;
-    MakeFontFamily(ResolveWeight(TextWeight::Bold), captionFamilyPtr,
+    MakeFontFamily(ResolveWeight(TextWeight::Bold, s.fontFamily), captionFamilyPtr,
                    captionWeight);
 
     const PanelLayout layout = ComputePanelLayout(scale);
@@ -2471,6 +3106,8 @@ static void DrawDetailsPanel(HDC hdc, int width, int height, HWND hwnd) {
     SolidBrush labelBrush(BlendColor(textColor, 215));
     SolidBrush captionBrush(BlendColor(textColor, 200));
     SolidBrush unitBrush(BlendColor(textColor, 190));
+    SolidBrush downValueBrush(downColor);
+    SolidBrush upValueBrush(upColor);
 
     // One shared format: near/near so every row is positioned by its own rect
     // rather than by vertical centring inside a guessed box.
@@ -2520,10 +3157,13 @@ static void DrawDetailsPanel(HDC hdc, int width, int height, HWND hwnd) {
     // --- Live speeds -------------------------------------------------------
     // The arrow sits in its own gutter and is centred on the label+value pair;
     // label and value then share ONE left edge, so the block has a single
-    // text column instead of two competing ones.
+    // text column instead of two competing ones. With arrows hidden the gutter
+    // collapses and the text moves left into the freed space.
     const REAL arrow = layout.arrow;
-    const REAL textX = margin + arrow + layout.arrowGap;
-    const REAL textWidth = contentWidth - arrow - layout.arrowGap;
+    const ArrowStyle arrowStyle = LiveArrowStyle();
+    const REAL arrowGutter = ArrowGutter(arrowStyle, arrow, layout.arrowGap);
+    const REAL textX = margin + arrowGutter;
+    const REAL textWidth = contentWidth - arrowGutter;
     const REAL valueNumberColumn = MeasureNumberColumn(graphics, fontValue, left);
 
     auto drawMetric = [&](const wchar_t* label, const std::wstring& value,
@@ -2531,13 +3171,17 @@ static void DrawDetailsPanel(HDC hdc, int width, int height, HWND hwnd) {
         REAL blockTop = y;
         REAL blockHeight = layout.labelRow + layout.valueRow;
         DrawArrow(graphics, down ? downColor : upColor, margin + arrow / 2.0f,
-                  blockTop + blockHeight / 2.0f, arrow, down, s.arrowStyle);
+                  blockTop + blockHeight / 2.0f, arrow, down, arrowStyle);
         DrawSharpString(graphics, label, fontLabel,
                         RectF(textX, y, textWidth, layout.labelRow), left,
                         labelBrush, light, shadowOffset);
         y += layout.labelRow;
+        // A manual direction colour also tints that metric's value.
+        const bool tint = down ? customDown : customUp;
         DrawValueWithFixedUnit(graphics, value, fontValue, fontValueUnit, textX, y,
-                               textWidth, layout.valueRow, left, textBrush,
+                               textWidth, layout.valueRow, left,
+                               tint ? (down ? downValueBrush : upValueBrush)
+                                    : textBrush,
                                unitBrush, light, shadowOffset, valueNumberColumn);
         y += layout.valueRow;
     };
@@ -2567,11 +3211,12 @@ static void DrawDetailsPanel(HDC hdc, int width, int height, HWND hwnd) {
     const REAL totalNumberColumn = MeasureNumberColumn(graphics, fontTotal, left);
 
     DrawArrow(graphics, downColor, margin + arrow / 2.0f,
-              y + layout.totalRow / 2.0f, totalArrow, true, s.arrowStyle);
+              y + layout.totalRow / 2.0f, totalArrow, true, arrowStyle);
     DrawValueWithFixedUnit(graphics, FormatBytes(snapshot.totalDown, s), fontTotal,
-                           fontTotalUnit, margin + arrow + layout.arrowGap, y,
-                           halfWidth - arrow - layout.arrowGap, layout.totalRow,
-                           left, textBrush, unitBrush, light, shadowOffset,
+                           fontTotalUnit, margin + arrowGutter, y,
+                           halfWidth - arrowGutter, layout.totalRow,
+                           left, customDown ? downValueBrush : textBrush,
+                           unitBrush, light, shadowOffset,
                            totalNumberColumn);
 
     // The upload pair is placed as a group whose right edge lands on the content
@@ -2588,18 +3233,19 @@ static void DrawDetailsPanel(HDC hdc, int width, int height, HWND hwnd) {
                            RectF(0, 0, contentWidth, layout.totalRow), &left,
                            &unitBounds);
     REAL upGroupWidth =
-        arrow + layout.arrowGap + totalNumberColumn + unitBounds.Width;
+        arrowGutter + totalNumberColumn + unitBounds.Width;
     REAL upGroupX = margin + contentWidth - upGroupWidth;
     REAL upGroupFloor = margin + halfWidth + layout.columnGap;
     if (upGroupX < upGroupFloor) {
         upGroupX = upGroupFloor;
     }
     DrawArrow(graphics, upColor, upGroupX + arrow / 2.0f,
-              y + layout.totalRow / 2.0f, totalArrow, false, s.arrowStyle);
+              y + layout.totalRow / 2.0f, totalArrow, false, arrowStyle);
     DrawValueWithFixedUnit(graphics, upTotalText, fontTotal, fontTotalUnit,
-                           upGroupX + arrow + layout.arrowGap, y,
-                           upGroupWidth - arrow - layout.arrowGap, layout.totalRow,
-                           left, textBrush, unitBrush, light, shadowOffset,
+                           upGroupX + arrowGutter, y,
+                           upGroupWidth - arrowGutter, layout.totalRow,
+                           left, customUp ? upValueBrush : textBrush,
+                           unitBrush, light, shadowOffset,
                            totalNumberColumn);
     y += layout.totalRow;
 
@@ -3209,6 +3855,33 @@ static bool DividerHover(HWND hwnd, int mouseX, const ModSettings& s) {
 }
 
 // --- Context menu ----------------------------------------------------------
+// Apply a live display-mode change: atomic first (painters read it), then
+// storage, then repaint. Settings are NOT reloaded - the setting is only the
+// default and would stomp the menu choice.
+static void ApplyDisplayMode(HWND hwnd, int mode) {
+    g_displayMode = ClampInt(mode, 0, 2);
+    Wh_SetIntValue(L"DisplayMode", g_displayMode.load());
+    InvalidateRect(hwnd, nullptr, TRUE);
+    if (g_hPanel && g_panelVisible.load()) {
+        InvalidateRect(g_hPanel, nullptr, TRUE);
+    }
+}
+
+static void ApplyCaptionBits(HWND hwnd, int bits) {
+    g_captionBits = ClampInt(bits, 0, 3);
+    Wh_SetIntValue(L"CaptionBits", g_captionBits.load());
+    InvalidateRect(hwnd, nullptr, TRUE);
+}
+
+static void ApplyArrowsHidden(HWND hwnd, bool hidden) {
+    g_arrowsHidden = hidden ? 1 : 0;
+    Wh_SetIntValue(L"ArrowsHidden", g_arrowsHidden.load());
+    InvalidateRect(hwnd, nullptr, TRUE);
+    if (g_hPanel && g_panelVisible.load()) {
+        InvalidateRect(g_hPanel, nullptr, TRUE);
+    }
+}
+
 static void ShowContextMenu(HWND hwnd) {
     HMENU menu = CreatePopupMenu();
     if (!menu) {
@@ -3217,6 +3890,34 @@ static void ShowContextMenu(HWND hwnd) {
 
     AppendMenuW(menu, MF_STRING, IDM_REFRESH, L"Refresh");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    {
+        // What the widget shows: speed, traffic, or both. Radio check marks so
+        // the current choice is obvious and one click switches.
+        const int mode = ClampInt(g_displayMode.load(), 0, 2);
+        AppendMenuW(menu, MF_STRING | MF_RADIOCHECK | MF_GROUPCHECK |
+                                (mode == 0 ? MF_CHECKED : MF_UNCHECKED),
+                    IDM_SHOW_BOTH, L"Show both");
+        AppendMenuW(menu, MF_STRING | MF_RADIOCHECK |
+                                (mode == 1 ? MF_CHECKED : MF_UNCHECKED),
+                    IDM_SHOW_SPEED, L"Show speed only");
+        AppendMenuW(menu, MF_STRING | MF_RADIOCHECK |
+                                (mode == 2 ? MF_CHECKED : MF_UNCHECKED),
+                    IDM_SHOW_TRAFFIC, L"Show traffic only");
+        AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+        // The small captions above the two halves, and the arrows themselves.
+        const int bits = ClampInt(g_captionBits.load(), 0, 3);
+        AppendMenuW(menu, MF_STRING |
+                                (bits & 1 ? MF_CHECKED : MF_UNCHECKED),
+                    IDM_TOGGLE_CAPTION_SPEED, L"Show SPEED caption");
+        AppendMenuW(menu, MF_STRING |
+                                (bits & 2 ? MF_CHECKED : MF_UNCHECKED),
+                    IDM_TOGGLE_CAPTION_TOTAL, L"Show TOTAL caption");
+        AppendMenuW(menu, MF_STRING |
+                                (g_arrowsHidden.load() ? MF_UNCHECKED
+                                                       : MF_CHECKED),
+                    IDM_TOGGLE_ARROWS, L"Show arrows");
+        AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    }
     AppendMenuW(menu, MF_STRING, IDM_RESET_BOTH, L"Reset counters (both)");
     AppendMenuW(menu, MF_STRING, IDM_RESET_DL, L"Reset download");
     AppendMenuW(menu, MF_STRING, IDM_RESET_UL, L"Reset upload");
@@ -3271,6 +3972,24 @@ static void ShowContextMenu(HWND hwnd) {
             Wh_SetIntValue(L"DividerOffset", 0);
             LoadSettings();
             InvalidateRect(hwnd, nullptr, FALSE);
+            break;
+        case IDM_SHOW_BOTH:
+            ApplyDisplayMode(hwnd, 0);
+            break;
+        case IDM_SHOW_SPEED:
+            ApplyDisplayMode(hwnd, 1);
+            break;
+        case IDM_SHOW_TRAFFIC:
+            ApplyDisplayMode(hwnd, 2);
+            break;
+        case IDM_TOGGLE_CAPTION_SPEED:
+            ApplyCaptionBits(hwnd, g_captionBits.load() ^ 1);
+            break;
+        case IDM_TOGGLE_CAPTION_TOTAL:
+            ApplyCaptionBits(hwnd, g_captionBits.load() ^ 2);
+            break;
+        case IDM_TOGGLE_ARROWS:
+            ApplyArrowsHidden(hwnd, !g_arrowsHidden.load());
             break;
         case IDM_NET_SETTINGS:
             ShellExecuteW(nullptr, L"open", L"ms-settings:network", nullptr,
@@ -3452,6 +4171,16 @@ static LRESULT CALLBACK WidgetWndProc(HWND hwnd,
             }
             if (GetSettings().showDetails) {
                 TogglePanel(hwnd);
+            }
+            return 0;
+
+        case WM_MBUTTONDOWN:
+            // Middle click cycles the display: both -> speed -> traffic -> both.
+            // A full cycle so the user can always get back to the two-column
+            // view without opening the menu.
+            if (GetSettings().cycleOnMiddleClick) {
+                const int mode = ClampInt(g_displayMode.load(), 0, 2);
+                ApplyDisplayMode(hwnd, (mode + 1) % 3);
             }
             return 0;
 
@@ -3648,8 +4377,14 @@ BOOL WhTool_ModInit() {
     Wh_Log(L"Taskbar Network Lounge starting");
 
     // Seed the live divider offset from storage BEFORE the first settings read,
-    // so a dragged divider is already in place on the first paint.
+    // so a dragged divider is already in place on the first paint. Same for the
+    // menu-toggled display state (mode, captions, arrows).
     g_dividerOffset = Wh_GetIntValue(L"DividerOffset", 0);
+    g_displayMode = ClampInt(Wh_GetIntValue(L"DisplayMode", 0), 0, 2);
+    g_captionBits = ClampInt(Wh_GetIntValue(L"CaptionBits", 3), 0, 3);
+    g_arrowStyle = ClampInt(Wh_GetIntValue(L"ArrowStyle", (int)ArrowStyle::Rounded),
+                            0, (int)ArrowStyle::Plus);
+    g_arrowsHidden = Wh_GetIntValue(L"ArrowsHidden", 0) ? 1 : 0;
 
     LoadSettings();
     ApplyResetSettingIfChanged();

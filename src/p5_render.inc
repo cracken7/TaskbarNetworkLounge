@@ -124,31 +124,68 @@ static Color BlendColor(const Color& base, BYTE alpha) {
     return Color(alpha, base.GetRed(), base.GetGreen(), base.GetBlue());
 }
 
-// Five vector styles, all drawn as paths so they stay crisp at any DPI and need
+// Vector arrow styles, all drawn as paths so they stay crisp at any DPI and need
 // no font glyph. `size` is the total arrow height; `cx`/`cy` is its centre.
-static void DrawArrow(Graphics& graphics,
-                      const Color& color,
-                      REAL cx,
-                      REAL cy,
-                      REAL size,
-                      bool down,
-                      ArrowStyle style) {
+// `style` None draws nothing (the "hide arrows" choice).
+
+// Filled stem + head polygon shared by the solid-family styles; every dimension
+// is a fraction of `size`, so the shape scales without drifting.
+static void FillStemHeadArrow(Graphics& graphics,
+                              const Brush& brush,
+                              REAL cx,
+                              REAL cy,
+                              REAL size,
+                              REAL dir,
+                              REAL headHalf,
+                              REAL headLen,
+                              REAL stemHalf) {
+    REAL half = size / 2.0f;
+    REAL tipY = cy + dir * half;
+    REAL headY = tipY - dir * headLen;
+    REAL stemY = cy - dir * half;
+    PointF points[7] = {
+        PointF(cx - stemHalf, stemY), PointF(cx + stemHalf, stemY),
+        PointF(cx + stemHalf, headY), PointF(cx + headHalf, headY),
+        PointF(cx, tipY),             PointF(cx - headHalf, headY),
+        PointF(cx - stemHalf, headY),
+    };
+    graphics.FillPolygon(&brush, points, 7);
+}
+
+// Chevron strokes meeting at the tip, rounded caps - the Fluent look.
+static void StrokeChevronArrow(Graphics& graphics,
+                               const Color& color,
+                               REAL cx,
+                               REAL cy,
+                               REAL size,
+                               REAL dir,
+                               REAL width,
+                               REAL stroke) {
+    Pen pen(color, stroke);
+    pen.SetStartCap(LineCapRound);
+    pen.SetEndCap(LineCapRound);
+    pen.SetLineJoin(LineJoinRound);
+    PointF points[3] = {PointF(cx - width, cy - dir * size * 0.28f),
+                        PointF(cx, cy + dir * size * 0.28f),
+                        PointF(cx + width, cy - dir * size * 0.28f)};
+    graphics.DrawLines(&pen, points, 3);
+}
+
+static void DrawArrowCore(Graphics& graphics,
+                          const Color& color,
+                          REAL cx,
+                          REAL cy,
+                          REAL size,
+                          bool down,
+                          ArrowStyle style) {
     REAL half = size / 2.0f;
     REAL dir = down ? 1.0f : -1.0f;
     SolidBrush brush(color);
 
     switch (style) {
         case ArrowStyle::Chevron: {
-            // Two strokes meeting at the tip, rounded caps - the Fluent look.
-            REAL w = size * 0.40f;
-            Pen pen(color, size * 0.20f);
-            pen.SetStartCap(LineCapRound);
-            pen.SetEndCap(LineCapRound);
-            pen.SetLineJoin(LineJoinRound);
-            PointF points[3] = {PointF(cx - w, cy - dir * half * 0.55f),
-                                PointF(cx, cy + dir * half * 0.55f),
-                                PointF(cx + w, cy - dir * half * 0.55f)};
-            graphics.DrawLines(&pen, points, 3);
+            StrokeChevronArrow(graphics, color, cx, cy, size, dir,
+                               size * 0.40f, size * 0.20f);
             return;
         }
 
@@ -218,10 +255,29 @@ static void DrawArrow(Graphics& graphics,
             return;
         }
 
-        case ArrowStyle::Solid:
-        default: {
-            // Stem + wide head as one filled polygon: the sturdiest shape, the
-            // easiest to read at small sizes.
+        case ArrowStyle::Double: {
+            // Two stacked chevrons: reads as "fast" without a stem.
+            StrokeChevronArrow(graphics, color, cx, cy - dir * size * 0.17f,
+                               size, dir, size * 0.34f, size * 0.15f);
+            StrokeChevronArrow(graphics, color, cx, cy + dir * size * 0.17f,
+                               size, dir, size * 0.34f, size * 0.15f);
+            return;
+        }
+
+        case ArrowStyle::Triple: {
+            // Three stacked chevrons - the classic speed-lines mark.
+            StrokeChevronArrow(graphics, color, cx, cy - dir * size * 0.28f,
+                               size, dir, size * 0.32f, size * 0.13f);
+            StrokeChevronArrow(graphics, color, cx, cy, size, dir,
+                               size * 0.32f, size * 0.13f);
+            StrokeChevronArrow(graphics, color, cx, cy + dir * size * 0.28f,
+                               size, dir, size * 0.32f, size * 0.13f);
+            return;
+        }
+
+        case ArrowStyle::Outline: {
+            // The solid silhouette stroked only - hollow, light on the eye.
+            GraphicsPath path;
             REAL headHalf = size * 0.40f;
             REAL headLen = size * 0.48f;
             REAL stemHalf = size * 0.145f;
@@ -234,10 +290,322 @@ static void DrawArrow(Graphics& graphics,
                 PointF(cx, tipY),             PointF(cx - headHalf, headY),
                 PointF(cx - stemHalf, headY),
             };
-            graphics.FillPolygon(&brush, points, 7);
+            path.AddClosedCurve(points, 7, 0.0f);
+            Pen pen(color, size * 0.11f);
+            pen.SetLineJoin(LineJoinRound);
+            graphics.DrawPath(&pen, &path);
+            return;
+        }
+
+        case ArrowStyle::Thin: {
+            // Hairline stem + narrow chevron head: the quietest arrow here.
+            Pen pen(color, size * 0.09f);
+            pen.SetStartCap(LineCapRound);
+            pen.SetEndCap(LineCapRound);
+            graphics.DrawLine(&pen, cx, cy - dir * half, cx,
+                              cy + dir * half * 0.75f);
+            PointF head[3] = {PointF(cx - size * 0.26f, cy + dir * half * 0.24f),
+                              PointF(cx, cy + dir * half),
+                              PointF(cx + size * 0.26f, cy + dir * half * 0.24f)};
+            graphics.DrawLines(&pen, head, 3);
+            return;
+        }
+
+        case ArrowStyle::Fat: {
+            // Wide head, thick stem: the loudest arrow here, good on bright
+            // wallpapers where thin strokes wash out.
+            FillStemHeadArrow(graphics, brush, cx, cy, size, dir,
+                              size * 0.50f, size * 0.52f, size * 0.22f);
+            return;
+        }
+
+        case ArrowStyle::Head: {
+            // Just the head, floating: minimal ink, still unmistakable.
+            REAL w = size * 0.42f;
+            Pen pen(color, size * 0.16f);
+            pen.SetStartCap(LineCapRound);
+            pen.SetEndCap(LineCapRound);
+            pen.SetLineJoin(LineJoinRound);
+            PointF head[3] = {PointF(cx - w, cy - dir * size * 0.22f),
+                              PointF(cx, cy + dir * size * 0.22f),
+                              PointF(cx + w, cy - dir * size * 0.22f)};
+            graphics.DrawLines(&pen, head, 3);
+            return;
+        }
+
+        case ArrowStyle::Ring: {
+            // Chevron inside a thin ring - badge-like without the filled disc.
+            REAL r = size * 0.5f;
+            Pen ring(color, size * 0.08f);
+            graphics.DrawEllipse(&ring, cx - r, cy - r, r * 2, r * 2);
+            StrokeChevronArrow(graphics, color, cx, cy + dir * size * 0.02f,
+                               size, dir, size * 0.24f, size * 0.11f);
+            return;
+        }
+
+        case ArrowStyle::Square: {
+            // Circle badge's sibling: rounded square, tinted fill.
+            REAL r = size * 0.5f;
+            REAL sq = r * 1.7f;
+            REAL sqX = cx - sq / 2.0f;
+            REAL sqY = cy - sq / 2.0f;
+            GraphicsPath box;
+            AddRoundedRect(box, sqX, sqY, sq, sq, size * 0.22f);
+            SolidBrush fill(BlendColor(color, 62));
+            graphics.FillPath(&fill, &box);
+            Pen edge(BlendColor(color, 150), size * 0.07f);
+            graphics.DrawPath(&edge, &box);
+            StrokeChevronArrow(graphics, color, cx, cy + dir * size * 0.02f,
+                               size, dir, size * 0.22f, size * 0.11f);
+            return;
+        }
+
+        case ArrowStyle::Fade: {
+            // Solid head, stem drawn in segments that thin out toward the tail.
+            FillStemHeadArrow(graphics, brush, cx, cy, size, dir,
+                              size * 0.40f, size * 0.48f, size * 0.145f);
+            REAL stemY0 = cy - dir * half;
+            REAL stemY1 = cy - dir * half + dir * size * 0.50f;
+            const int kSegs = 6;
+            for (int i = 0; i < kSegs; i++) {
+                REAL t0 = (REAL)i / kSegs;
+                REAL t1 = (REAL)(i + 1) / kSegs;
+                BYTE a = (BYTE)(255.0f * (0.15f + 0.85f * t1));
+                Pen seg(BlendColor(color, a), size * (0.05f + 0.11f * t1));
+                seg.SetStartCap(LineCapRound);
+                seg.SetEndCap(LineCapRound);
+                graphics.DrawLine(&seg, cx, stemY0 + (stemY1 - stemY0) * t0, cx,
+                                  stemY0 + (stemY1 - stemY0) * t1);
+            }
+            return;
+        }
+
+        case ArrowStyle::Dashed: {
+            // Solid head, dashed shaft. The shaft runs from the tail toward the
+            // head; lo/hi are normalised so the loop always moves downward in
+            // screen space whatever direction the arrow points.
+            FillStemHeadArrow(graphics, brush, cx, cy, size, dir,
+                              size * 0.40f, size * 0.48f, size * 0.145f);
+            REAL dash = size * 0.13f;
+            REAL shaftA = cy - dir * half;
+            REAL shaftB = shaftA + dir * size * 0.52f;
+            REAL lo = shaftA < shaftB ? shaftA : shaftB;
+            REAL hi = shaftA < shaftB ? shaftB : shaftA;
+            for (REAL t = lo; t < hi; t += dash * 2.0f) {
+                REAL segEnd = t + dash;
+                if (segEnd > hi) {
+                    segEnd = hi;
+                }
+                SolidBrush dashBrush(color);
+                graphics.FillRectangle(&dashBrush, cx - size * 0.10f, t,
+                                       size * 0.20f, segEnd - t);
+            }
+            return;
+        }
+
+        case ArrowStyle::Barb: {
+            // Broadhead: the head base sweeps into backward barbs.
+            REAL headHalf = size * 0.46f;
+            REAL headLen = size * 0.55f;
+            REAL stemHalf = size * 0.11f;
+            REAL tipY = cy + dir * half;
+            REAL headY = tipY - dir * headLen;
+            REAL barbY = headY + dir * headLen * 0.45f;
+            REAL stemY = cy - dir * half;
+            PointF points[9] = {
+                PointF(cx - stemHalf, stemY), PointF(cx + stemHalf, stemY),
+                PointF(cx + stemHalf, headY), PointF(cx + headHalf, headY),
+                PointF(cx + stemHalf * 1.6f, barbY),
+                PointF(cx, tipY),
+                PointF(cx - stemHalf * 1.6f, barbY),
+                PointF(cx - headHalf, headY),
+                PointF(cx - stemHalf, headY),
+            };
+            graphics.FillPolygon(&brush, points, 9);
+            return;
+        }
+
+        case ArrowStyle::Needle: {
+            // A slim spearhead: all tip, no stem.
+            REAL w = size * 0.20f;
+            REAL tipY = cy + dir * half;
+            REAL tailY = cy - dir * half;
+            REAL shoulderY = tipY - dir * size * 0.55f;
+            PointF points[4] = {
+                PointF(cx, tipY), PointF(cx + w, shoulderY),
+                PointF(cx, tailY), PointF(cx - w, shoulderY),
+            };
+            graphics.FillPolygon(&brush, points, 4);
+            return;
+        }
+
+        case ArrowStyle::Dot: {
+            // Rounded stem + head with a dot at the tail - reads as a pin.
+            REAL stem = size * 0.13f;
+            REAL inset = stem / 2.0f;
+            REAL top = cy - dir * (half - size * 0.16f);
+            REAL tip = cy + dir * (half - inset);
+            Pen stemPen(color, stem);
+            stemPen.SetStartCap(LineCapRound);
+            stemPen.SetEndCap(LineCapRound);
+            graphics.DrawLine(&stemPen, cx, top, cx, cy + dir * half * 0.35f);
+            REAL w = size * 0.28f - inset;
+            Pen headPen(color, stem);
+            headPen.SetStartCap(LineCapRound);
+            headPen.SetEndCap(LineCapRound);
+            headPen.SetLineJoin(LineJoinRound);
+            PointF head[3] = {PointF(cx - w, tip - dir * (w + inset)),
+                              PointF(cx, tip),
+                              PointF(cx + w, tip - dir * (w + inset))};
+            graphics.DrawLines(&headPen, head, 3);
+            REAL dotR = size * 0.13f;
+            graphics.FillEllipse(&brush, cx - dotR, top - dotR, dotR * 2,
+                                 dotR * 2);
+            return;
+        }
+
+        case ArrowStyle::Feather: {
+            // Solid silhouette plus two fletch strokes at the tail.
+            FillStemHeadArrow(graphics, brush, cx, cy, size, dir,
+                              size * 0.38f, size * 0.46f, size * 0.13f);
+            Pen pen(color, size * 0.09f);
+            pen.SetStartCap(LineCapRound);
+            pen.SetEndCap(LineCapRound);
+            REAL stemY = cy - dir * half;
+            graphics.DrawLine(&pen, cx, stemY + dir * size * 0.06f,
+                              cx - size * 0.22f, stemY + dir * size * 0.24f);
+            graphics.DrawLine(&pen, cx, stemY + dir * size * 0.06f,
+                              cx + size * 0.22f, stemY + dir * size * 0.24f);
+            return;
+        }
+
+        case ArrowStyle::Layered: {
+            // A dim copy offset behind the solid one - a soft drop shadow that
+            // gives the arrow depth on flat backgrounds.
+            REAL off = size * 0.10f;
+            FillStemHeadArrow(graphics, SolidBrush(BlendColor(color, 80)),
+                              cx - off, cy - off * 0.6f, size, dir,
+                              size * 0.40f, size * 0.48f, size * 0.145f);
+            FillStemHeadArrow(graphics, brush, cx, cy, size, dir,
+                              size * 0.40f, size * 0.48f, size * 0.145f);
+            return;
+        }
+
+        case ArrowStyle::Tray: {
+            // The Windows "download/upload" mark: a stem + head arrow feeding a
+            // tray - a horizontal base line with short upturned ends. For the
+            // download arrow the tip points INTO the tray; for upload the arrow
+            // rises OUT of it, so the pair reads as in / out at a glance.
+            REAL stem = size * 0.15f;
+            REAL inset = stem / 2.0f;
+            REAL trayY = cy + dir * half;
+            REAL trayW = size * 0.42f;
+            REAL trayLip = size * 0.16f;
+            Pen tray(color, stem * 0.85f);
+            tray.SetStartCap(LineCapRound);
+            tray.SetEndCap(LineCapRound);
+            tray.SetLineJoin(LineJoinRound);
+            PointF trayPts[4] = {
+                PointF(cx - trayW, trayY - dir * trayLip),
+                PointF(cx - trayW, trayY),
+                PointF(cx + trayW, trayY),
+                PointF(cx + trayW, trayY - dir * trayLip),
+            };
+            graphics.DrawLines(&tray, trayPts, 4);
+            // The arrow itself sits above the tray, shortened so it never
+            // touches the base line.
+            REAL arrowSpan = size * 0.66f;
+            REAL aHalf = arrowSpan / 2.0f;
+            REAL aCy = cy - dir * (half - aHalf - size * 0.06f);
+            REAL tip = aCy + dir * (aHalf - inset);
+            REAL top = aCy - dir * (aHalf - inset);
+            Pen stemPen(color, stem);
+            stemPen.SetStartCap(LineCapRound);
+            stemPen.SetEndCap(LineCapRound);
+            graphics.DrawLine(&stemPen, cx, top, cx, aCy + dir * aHalf * 0.3f);
+            REAL w = size * 0.26f - inset;
+            Pen headPen(color, stem);
+            headPen.SetStartCap(LineCapRound);
+            headPen.SetEndCap(LineCapRound);
+            headPen.SetLineJoin(LineJoinRound);
+            PointF head[3] = {PointF(cx - w, tip - dir * (w + inset)),
+                              PointF(cx, tip),
+                              PointF(cx + w, tip - dir * (w + inset))};
+            graphics.DrawLines(&headPen, head, 3);
+            return;
+        }
+
+        case ArrowStyle::Plus: {
+            // A plus sign carrying the arrow: the vertical stroke IS the shaft
+            // (head at its tip), and a horizontal bar crosses it - so download
+            // reads as a "+" pointing down and upload as a "+" pointing up.
+            REAL bar = size * 0.16f;
+            REAL inset = bar / 2.0f;
+            REAL tip = cy + dir * (half - inset);
+            REAL tail = cy - dir * (half - inset);
+            Pen shaft(color, bar);
+            shaft.SetStartCap(LineCapRound);
+            shaft.SetEndCap(LineCapRound);
+            graphics.DrawLine(&shaft, cx, tail, cx, cy + dir * half * 0.30f);
+            // The cross-bar sits toward the tail so the head stays dominant.
+            REAL barY = cy - dir * half * 0.30f;
+            REAL barW = size * 0.34f;
+            graphics.DrawLine(&shaft, cx - barW, barY, cx + barW, barY);
+            // Chevron head on the tip.
+            REAL w = size * 0.28f - inset;
+            Pen headPen(color, bar);
+            headPen.SetStartCap(LineCapRound);
+            headPen.SetEndCap(LineCapRound);
+            headPen.SetLineJoin(LineJoinRound);
+            PointF head[3] = {PointF(cx - w, tip - dir * (w + inset)),
+                              PointF(cx, tip),
+                              PointF(cx + w, tip - dir * (w + inset))};
+            graphics.DrawLines(&headPen, head, 3);
+            return;
+        }
+
+        case ArrowStyle::None:
+            // "Hide arrows": nothing is drawn and the caller collapses the
+            // gutter so the numbers move left into the freed space.
+            return;
+
+        case ArrowStyle::Solid:
+        default: {
+            // Stem + wide head as one filled polygon: the sturdiest shape, the
+            // easiest to read at small sizes.
+            FillStemHeadArrow(graphics, brush, cx, cy, size, dir,
+                              size * 0.40f, size * 0.48f, size * 0.145f);
             return;
         }
     }
+}
+
+static void DrawArrow(Graphics& graphics,
+                      const Color& color,
+                      REAL cx,
+                      REAL cy,
+                      REAL size,
+                      bool down,
+                      ArrowStyle style) {
+    DrawArrowCore(graphics, color, cx, cy, size, down, style);
+}
+
+// Horizontal space an arrow reserves in front of its number. None collapses it
+// to zero so the text slides left into the freed space instead of leaving a
+// gap where no glyph is drawn.
+static REAL ArrowGutter(ArrowStyle style, REAL arrowSize, REAL arrowGap) {
+    return style == ArrowStyle::None ? 0.0f : arrowSize + arrowGap;
+}
+
+// The arrow style as it is RIGHT NOW: the shape from the setting/menu, or None
+// when the "Show arrows" toggle is off. Painters use this instead of the
+// settings snapshot so a menu toggle takes effect on the next repaint without a
+// settings reload.
+static ArrowStyle LiveArrowStyle() {
+    if (g_arrowsHidden.load()) {
+        return ArrowStyle::None;
+    }
+    return (ArrowStyle)ClampInt(g_arrowStyle.load(), 0, (int)ArrowStyle::Plus);
 }
 
 // Text on acrylic has no guaranteed contrast, so every string is drawn twice: a
@@ -326,13 +694,27 @@ static REAL MeasureNumberColumn(Graphics& graphics,
 
 // Segoe UI Semibold/Black are separate FAMILIES, not style bits, so the weight
 // setting has to pick a family name as well as a style flag. Falls back to plain
-// "Segoe UI" + FontStyleBold if a family is missing.
+// "Segoe UI" + FontStyleBold if a family is missing. When the user sets a custom
+// font family, the weight maps onto that family's style bits instead (Semibold
+// and Black only exist as separate Segoe families).
 struct ResolvedFont {
     std::wstring family;
     INT style;
 };
 
-static ResolvedFont ResolveWeight(TextWeight weight) {
+static ResolvedFont ResolveWeight(TextWeight weight,
+                                  const std::wstring& customFamily) {
+    if (!customFamily.empty() && customFamily != kFontName) {
+        switch (weight) {
+            case TextWeight::Regular:
+                return {customFamily, FontStyleRegular};
+            case TextWeight::Italic:
+                return {customFamily, FontStyleItalic};
+            case TextWeight::Bold:
+            default:
+                return {customFamily, FontStyleBold};
+        }
+    }
     switch (weight) {
         case TextWeight::Black:
             return {L"Segoe UI Black", FontStyleRegular};
@@ -340,6 +722,8 @@ static ResolvedFont ResolveWeight(TextWeight weight) {
             return {L"Segoe UI Semibold", FontStyleRegular};
         case TextWeight::Regular:
             return {kFontName, FontStyleRegular};
+        case TextWeight::Italic:
+            return {kFontName, FontStyleItalic};
         case TextWeight::Bold:
         default:
             return {kFontName, FontStyleBold};
@@ -400,6 +784,16 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
         downColor = light ? Color(255, 0, 82, 168) : Color(255, 140, 224, 255);
         upColor = light ? Color(255, 13, 106, 13) : Color(255, 138, 238, 158);
     }
+    // A manual per-direction colour wins over both the text colour and the
+    // accent, and recolours the numbers of that half too - not just the arrow.
+    const bool customDown = s.downloadColor != 0;
+    const bool customUp = s.uploadColor != 0;
+    if (customDown) {
+        downColor = Color(s.downloadColor);
+    }
+    if (customUp) {
+        upColor = Color(s.uploadColor);
+    }
 
     // Hover background for the widget body only - not for the divider grab zone,
     // which gets its own highlight on the line itself.
@@ -413,13 +807,13 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
 
     std::unique_ptr<FontFamily> family;
     INT weight = FontStyleBold;
-    MakeFontFamily(ResolveWeight(s.textWeight), family, weight);
+    MakeFontFamily(ResolveWeight(s.textWeight, s.fontFamily), family, weight);
     FontFamily& fontFamily = *family;
     // Captions keep a fixed weight so the SPEED/TOTAL hierarchy does not collapse
     // when the user picks a lighter weight for the values.
     std::unique_ptr<FontFamily> captionFamily;
     INT captionWeight = FontStyleBold;
-    MakeFontFamily(ResolveWeight(TextWeight::Bold), captionFamily, captionWeight);
+    MakeFontFamily(ResolveWeight(TextWeight::Bold, s.fontFamily), captionFamily, captionWeight);
     REAL fontSize = (REAL)(s.fontSize * scale);
     Font fontValue(&fontFamily, fontSize, weight, UnitPixel);
     Font fontTotal(&fontFamily, fontSize * 0.94f, weight, UnitPixel);
@@ -439,11 +833,22 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
                           StringFormatFlagsNoClip);
 
     const REAL padding = (REAL)(9.0 * scale);
+    // Live display state, read from the atomics (not the settings snapshot) so a
+    // right-click toggle repaints correctly without a settings reload:
+    //   displayMode: 0 = both halves, 1 = speeds only, 2 = totals only
+    //   captionBits: bit0 = SPEED visible, bit1 = TOTAL visible
+    //   arrowsHidden / arrowStyle: the arrow shape, or none at all
+    const int displayMode = ClampInt(g_displayMode.load(), 0, 2);
+    const int captionBits = ClampInt(g_captionBits.load(), 0, 3);
+    const ArrowStyle arrowStyle = LiveArrowStyle();
+    // Captions follow their own bits in every display mode: in speeds-only the
+    // SPEED label can still show, in totals-only the TOTAL label can still show.
+    const bool showLabels = captionBits != 0;
     // Row centres are a fixed fraction of the height apart; the arrow is capped to
     // that distance minus a small gap, so a large ArrowScale can never make the
     // down/up glyphs touch or spill outside the widget. Bigger arrows therefore
     // need a taller widget (Panel height), which the setting description says.
-    REAL rowPitch = (REAL)height * (s.showColumnLabels ? 0.36f : 0.44f);
+    REAL rowPitch = (REAL)height * (showLabels ? 0.36f : 0.44f);
     REAL arrowLimit = rowPitch - (REAL)(4.0 * scale);
     if (arrowLimit < 4.0f) {
         arrowLimit = 4.0f;
@@ -470,30 +875,72 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
     std::wstring downTotal = FormatBytes(snapshot.totalDown, s);
     std::wstring upTotal = FormatBytes(snapshot.totalUp, s);
 
+    const REAL gutter = ArrowGutter(arrowStyle, arrowSize, arrowGap);
+
+    // When a direction has a manual colour, its numbers take that colour too
+    // (slightly dimmed for the totals so the hierarchy survives); otherwise the
+    // shared text brushes are used as before.
+    SolidBrush downTextBrush(downColor);
+    SolidBrush upTextBrush(upColor);
+    SolidBrush downTotalBrush(BlendColor(Color(downColor.GetRed(), downColor.GetGreen(), downColor.GetBlue()), 250));
+    SolidBrush upTotalBrush(BlendColor(Color(upColor.GetRed(), upColor.GetGreen(), upColor.GetBlue()), 250));
+
     auto drawRow = [&](REAL x, REAL centerY, bool down, const std::wstring& text,
-                       Font& font, SolidBrush& brush, REAL maxWidth) {
+                       Font& font, SolidBrush& brush, REAL maxWidth,
+                       bool isTotal = false) {
         DrawArrow(graphics, down ? downColor : upColor, x + arrowSize / 2.0f,
-                  centerY, arrowSize, down, s.arrowStyle);
-        RectF textRect(x + arrowSize + arrowGap, centerY - fontSize,
-                       maxWidth - arrowSize - arrowGap, fontSize * 2.0f);
-        DrawSharpString(graphics, text.c_str(), font, textRect, format, brush,
+                  centerY, arrowSize, down, arrowStyle);
+        RectF textRect(x + gutter, centerY - fontSize, maxWidth - gutter,
+                       fontSize * 2.0f);
+        SolidBrush* use = &brush;
+        if (customDown && down) {
+            use = isTotal ? &downTotalBrush : &downTextBrush;
+        } else if (customUp && !down) {
+            use = isTotal ? &upTotalBrush : &upTextBrush;
+        }
+        DrawSharpString(graphics, text.c_str(), font, textRect, format, *use,
                         light, shadowOffset);
     };
 
-    if (s.layout == LayoutMode::OneLine) {
-        REAL centerY = height / 2.0f;
-        REAL columnWidth = ((REAL)width - padding * 2.0f) / 2.0f;
-        drawRow(padding, centerY, true, downSpeed, fontValue, textBrush,
-                columnWidth);
-        drawRow(padding + columnWidth, centerY, false, upSpeed, fontValue,
-                textBrush, columnWidth);
-        return;
+    // Speeds-only views (the LayoutMode setting, or display mode 1).
+    if (displayMode == 1 || s.layout == LayoutMode::OneLine) {
+        if (s.layout == LayoutMode::OneLine && displayMode != 2) {
+            REAL centerY = height / 2.0f;
+            REAL columnWidth = ((REAL)width - padding * 2.0f) / 2.0f;
+            drawRow(padding, centerY, true, downSpeed, fontValue, textBrush,
+                    columnWidth);
+            drawRow(padding + columnWidth, centerY, false, upSpeed, fontValue,
+                    textBrush, columnWidth);
+            return;
+        }
+        if (displayMode != 2) {
+            REAL speedTopY = height * 0.30f;
+            REAL speedBottomY = height * 0.72f;
+            if (showLabels && (captionBits & 1)) {
+                REAL captionY = height * 0.16f;
+                speedTopY = height * 0.46f;
+                speedBottomY = height * 0.79f;
+                DrawSharpString(graphics, L"SPEED", fontCaption,
+                                RectF(padding, captionY - fontSize * 0.6f,
+                                      (REAL)width - padding * 2.0f,
+                                      fontSize * 1.2f),
+                                format, captionBrush, light, shadowOffset);
+            }
+            REAL columnWidth = (REAL)width - padding * 2.0f;
+            drawRow(padding, speedTopY, true, downSpeed, fontValue, textBrush,
+                    columnWidth);
+            drawRow(padding, speedBottomY, false, upSpeed, fontValue, textBrush,
+                    columnWidth);
+            return;
+        }
+        // fall through: display mode 2 (totals) uses the full-layout geometry
+        // below with the speed column hidden.
     }
 
     REAL topY = height * 0.30f;
     REAL bottomY = height * 0.72f;
 
-    if (s.layout == LayoutMode::Speeds) {
+    if (s.layout == LayoutMode::Speeds && displayMode == 0) {
         REAL columnWidth = (REAL)width - padding * 2.0f;
         drawRow(padding, topY, true, downSpeed, fontValue, textBrush, columnWidth);
         drawRow(padding, bottomY, false, upSpeed, fontValue, textBrush,
@@ -505,33 +952,56 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
     // captions and a divider so the two groups can't be confused. DividerPos
     // decides how the usable width is split; the dragged offset shifts the LINE
     // ONLY, so grabbing it never moves the text with it.
+    //
+    // Display mode 1 hides the totals column (speeds fill the width), mode 2
+    // hides the speeds column (totals fill the width).
+    const bool showSpeedCol = displayMode != 2;
+    const bool showTotalCol = displayMode != 1;
     REAL columnGap = (REAL)(10.0 * scale);
-    REAL usable = (REAL)width - padding * 2.0f - columnGap;
+    REAL usable = (REAL)width - padding * 2.0f -
+                  (showSpeedCol && showTotalCol ? columnGap : 0.0f);
     REAL leftWidth = usable * (s.dividerPos / 100.0f);
     REAL columnWidth = usable - leftWidth;
     REAL rightX = padding + leftWidth + columnGap;
+    if (!showSpeedCol) {
+        // Totals-only: the totals column takes the whole width and the TOTAL
+        // caption sits at the left padding, not at the (now meaningless) split.
+        leftWidth = usable;
+        columnWidth = usable;
+        rightX = padding;
+    } else if (!showTotalCol) {
+        leftWidth = usable;
+        columnWidth = 0;
+    }
 
-    if (s.showColumnLabels) {
+    const bool showSpeedLabel = (captionBits & 1) != 0 && showLabels && showSpeedCol;
+    const bool showTotalLabel = (captionBits & 2) != 0 && showLabels && showTotalCol;
+    if (showSpeedLabel || showTotalLabel) {
         REAL captionY = height * 0.16f;
         topY = height * 0.46f;
         bottomY = height * 0.79f;
 
-        DrawSharpString(graphics, L"SPEED", fontCaption,
-                        RectF(padding, captionY - fontSize * 0.6f, leftWidth,
-                              fontSize * 1.2f),
-                        format, captionBrush, light, shadowOffset);
-        DrawSharpString(graphics, L"TOTAL", fontCaption,
-                        RectF(rightX, captionY - fontSize * 0.6f, columnWidth,
-                              fontSize * 1.2f),
-                        format, captionBrush, light, shadowOffset);
+        if (showSpeedLabel) {
+            DrawSharpString(graphics, L"SPEED", fontCaption,
+                            RectF(padding, captionY - fontSize * 0.6f, leftWidth,
+                                  fontSize * 1.2f),
+                            format, captionBrush, light, shadowOffset);
+        }
+        if (showTotalLabel) {
+            DrawSharpString(graphics, L"TOTAL", fontCaption,
+                            RectF(rightX, captionY - fontSize * 0.6f, columnWidth,
+                                  fontSize * 1.2f),
+                            format, captionBrush, light, shadowOffset);
+        }
     }
 
     // Divider. Its x is the split point plus the user's dragged offset - and the
     // offset is applied HERE ONLY, never to leftWidth/rightX, so dragging the line
     // moves nothing but the line. The painted x is published for the hit test so
     // the grab zone always matches what is on screen.
+    // Only meaningful while both columns are on screen.
     REAL dividerX = padding + leftWidth + columnGap / 2.0f;
-    if (s.dividerDraggable) {
+    if (showSpeedCol && showTotalCol && s.dividerDraggable) {
         // Read the LIVE atomic, not the settings snapshot: during a drag the
         // offset changes on every WM_MOUSEMOVE and settings are only reloaded on
         // mouse-up, so using s.dividerOffset here would make the line lag behind
@@ -548,9 +1018,11 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
             dividerX = maxX;
         }
     }
-    g_dividerHitX = (float)dividerX;
+    g_dividerHitX = (showSpeedCol && showTotalCol) ? (float)dividerX : -1.0f;
 
-    if (s.dividerOpacity > 0 || (s.dividerDraggable && g_widgetHover.load() == 2)) {
+    if (showSpeedCol && showTotalCol &&
+        (s.dividerOpacity > 0 ||
+         (s.dividerDraggable && g_widgetHover.load() == 2))) {
         // While being dragged (or hovered) the line brightens, so it is obvious
         // that it is the thing being grabbed even at opacity 0.
         BYTE alpha = (BYTE)s.dividerOpacity;
@@ -563,15 +1035,23 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
             thickness = (REAL)(2.0 * scale);
         }
         Pen divider(BlendColor(textColor, alpha), thickness);
-        REAL top = s.showColumnLabels ? height * 0.10f : height * 0.20f;
-        REAL bottom = s.showColumnLabels ? height * 0.90f : height * 0.80f;
+        REAL top = showLabels ? height * 0.10f : height * 0.20f;
+        REAL bottom = showLabels ? height * 0.90f : height * 0.80f;
         graphics.DrawLine(&divider, dividerX, top, dividerX, bottom);
     }
 
-    drawRow(padding, topY, true, downSpeed, fontValue, textBrush, leftWidth);
-    drawRow(padding, bottomY, false, upSpeed, fontValue, textBrush, leftWidth);
-    drawRow(rightX, topY, true, downTotal, fontTotal, dimBrush, columnWidth);
-    drawRow(rightX, bottomY, false, upTotal, fontTotal, dimBrush, columnWidth);
+    if (showSpeedCol) {
+        drawRow(padding, topY, true, downSpeed, fontValue, textBrush, leftWidth);
+        drawRow(padding, bottomY, false, upSpeed, fontValue, textBrush,
+                leftWidth);
+    }
+    if (showTotalCol) {
+        drawRow(showSpeedCol ? rightX : padding, topY, true, downTotal, fontTotal,
+                dimBrush, showSpeedCol ? columnWidth : leftWidth, true);
+        drawRow(showSpeedCol ? rightX : padding, bottomY, false, upTotal,
+                fontTotal, dimBrush, showSpeedCol ? columnWidth : leftWidth,
+                true);
+    }
 }
 
 // --- Details panel painting ------------------------------------------------
@@ -685,16 +1165,25 @@ static void DrawDetailsPanel(HDC hdc, int width, int height, HWND hwnd) {
     Color upColor = s.colorArrows
                         ? (light ? Color(255, 13, 106, 13) : Color(255, 138, 238, 158))
                         : textColor;
+    // Manual per-direction colours win, exactly as in the widget.
+    const bool customDown = s.downloadColor != 0;
+    const bool customUp = s.uploadColor != 0;
+    if (customDown) {
+        downColor = Color(s.downloadColor);
+    }
+    if (customUp) {
+        upColor = Color(s.uploadColor);
+    }
 
     std::unique_ptr<FontFamily> familyPtr;
     INT weight = FontStyleBold;
-    MakeFontFamily(ResolveWeight(s.textWeight), familyPtr, weight);
+    MakeFontFamily(ResolveWeight(s.textWeight, s.fontFamily), familyPtr, weight);
     FontFamily& fontFamily = *familyPtr;
     // Captions keep a fixed bold weight so the section hierarchy survives a
     // lighter weight choice for the values.
     std::unique_ptr<FontFamily> captionFamilyPtr;
     INT captionWeight = FontStyleBold;
-    MakeFontFamily(ResolveWeight(TextWeight::Bold), captionFamilyPtr,
+    MakeFontFamily(ResolveWeight(TextWeight::Bold, s.fontFamily), captionFamilyPtr,
                    captionWeight);
 
     const PanelLayout layout = ComputePanelLayout(scale);
@@ -712,6 +1201,8 @@ static void DrawDetailsPanel(HDC hdc, int width, int height, HWND hwnd) {
     SolidBrush labelBrush(BlendColor(textColor, 215));
     SolidBrush captionBrush(BlendColor(textColor, 200));
     SolidBrush unitBrush(BlendColor(textColor, 190));
+    SolidBrush downValueBrush(downColor);
+    SolidBrush upValueBrush(upColor);
 
     // One shared format: near/near so every row is positioned by its own rect
     // rather than by vertical centring inside a guessed box.
@@ -761,10 +1252,13 @@ static void DrawDetailsPanel(HDC hdc, int width, int height, HWND hwnd) {
     // --- Live speeds -------------------------------------------------------
     // The arrow sits in its own gutter and is centred on the label+value pair;
     // label and value then share ONE left edge, so the block has a single
-    // text column instead of two competing ones.
+    // text column instead of two competing ones. With arrows hidden the gutter
+    // collapses and the text moves left into the freed space.
     const REAL arrow = layout.arrow;
-    const REAL textX = margin + arrow + layout.arrowGap;
-    const REAL textWidth = contentWidth - arrow - layout.arrowGap;
+    const ArrowStyle arrowStyle = LiveArrowStyle();
+    const REAL arrowGutter = ArrowGutter(arrowStyle, arrow, layout.arrowGap);
+    const REAL textX = margin + arrowGutter;
+    const REAL textWidth = contentWidth - arrowGutter;
     const REAL valueNumberColumn = MeasureNumberColumn(graphics, fontValue, left);
 
     auto drawMetric = [&](const wchar_t* label, const std::wstring& value,
@@ -772,13 +1266,17 @@ static void DrawDetailsPanel(HDC hdc, int width, int height, HWND hwnd) {
         REAL blockTop = y;
         REAL blockHeight = layout.labelRow + layout.valueRow;
         DrawArrow(graphics, down ? downColor : upColor, margin + arrow / 2.0f,
-                  blockTop + blockHeight / 2.0f, arrow, down, s.arrowStyle);
+                  blockTop + blockHeight / 2.0f, arrow, down, arrowStyle);
         DrawSharpString(graphics, label, fontLabel,
                         RectF(textX, y, textWidth, layout.labelRow), left,
                         labelBrush, light, shadowOffset);
         y += layout.labelRow;
+        // A manual direction colour also tints that metric's value.
+        const bool tint = down ? customDown : customUp;
         DrawValueWithFixedUnit(graphics, value, fontValue, fontValueUnit, textX, y,
-                               textWidth, layout.valueRow, left, textBrush,
+                               textWidth, layout.valueRow, left,
+                               tint ? (down ? downValueBrush : upValueBrush)
+                                    : textBrush,
                                unitBrush, light, shadowOffset, valueNumberColumn);
         y += layout.valueRow;
     };
@@ -808,11 +1306,12 @@ static void DrawDetailsPanel(HDC hdc, int width, int height, HWND hwnd) {
     const REAL totalNumberColumn = MeasureNumberColumn(graphics, fontTotal, left);
 
     DrawArrow(graphics, downColor, margin + arrow / 2.0f,
-              y + layout.totalRow / 2.0f, totalArrow, true, s.arrowStyle);
+              y + layout.totalRow / 2.0f, totalArrow, true, arrowStyle);
     DrawValueWithFixedUnit(graphics, FormatBytes(snapshot.totalDown, s), fontTotal,
-                           fontTotalUnit, margin + arrow + layout.arrowGap, y,
-                           halfWidth - arrow - layout.arrowGap, layout.totalRow,
-                           left, textBrush, unitBrush, light, shadowOffset,
+                           fontTotalUnit, margin + arrowGutter, y,
+                           halfWidth - arrowGutter, layout.totalRow,
+                           left, customDown ? downValueBrush : textBrush,
+                           unitBrush, light, shadowOffset,
                            totalNumberColumn);
 
     // The upload pair is placed as a group whose right edge lands on the content
@@ -829,18 +1328,19 @@ static void DrawDetailsPanel(HDC hdc, int width, int height, HWND hwnd) {
                            RectF(0, 0, contentWidth, layout.totalRow), &left,
                            &unitBounds);
     REAL upGroupWidth =
-        arrow + layout.arrowGap + totalNumberColumn + unitBounds.Width;
+        arrowGutter + totalNumberColumn + unitBounds.Width;
     REAL upGroupX = margin + contentWidth - upGroupWidth;
     REAL upGroupFloor = margin + halfWidth + layout.columnGap;
     if (upGroupX < upGroupFloor) {
         upGroupX = upGroupFloor;
     }
     DrawArrow(graphics, upColor, upGroupX + arrow / 2.0f,
-              y + layout.totalRow / 2.0f, totalArrow, false, s.arrowStyle);
+              y + layout.totalRow / 2.0f, totalArrow, false, arrowStyle);
     DrawValueWithFixedUnit(graphics, upTotalText, fontTotal, fontTotalUnit,
-                           upGroupX + arrow + layout.arrowGap, y,
-                           upGroupWidth - arrow - layout.arrowGap, layout.totalRow,
-                           left, textBrush, unitBrush, light, shadowOffset,
+                           upGroupX + arrowGutter, y,
+                           upGroupWidth - arrowGutter, layout.totalRow,
+                           left, customUp ? upValueBrush : textBrush,
+                           unitBrush, light, shadowOffset,
                            totalNumberColumn);
     y += layout.totalRow;
 

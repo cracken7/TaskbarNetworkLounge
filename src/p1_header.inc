@@ -2,7 +2,7 @@
 // @id              taskbar-network-lounge
 // @name            Taskbar Network Lounge
 // @description     Live network speed and traffic totals on the taskbar, in a native acrylic widget
-// @version         1.2.0
+// @version         1.4.0
 // @author          cracken7
 // @github          https://github.com/cracken7
 // @homepage        https://github.com/cracken7/TaskbarNetworkLounge
@@ -20,234 +20,127 @@
 /*
 # Taskbar Network Lounge
 
-A small network meter that sits on your taskbar and shows how fast you are
-downloading and uploading right now, plus how much data you have used in total.
-
-![Widget](https://raw.githubusercontent.com/cracken7/TaskbarNetworkLounge/main/docs/widget.png)
+A live network meter on your Windows 11 taskbar: your download and upload speed
+right now, plus how much data you have used — in a small acrylic widget that
+looks like part of Windows.
 
 ## What you see
 
-The widget is split into two halves by a thin line:
+One rectangle split into two halves by a thin line:
 
-* **SPEED** (left) — your download and upload speed at this moment.
-* **TOTAL** (right) — how much you have downloaded and uploaded in total.
+- **SPEED** (left) — how fast you are downloading and uploading **now**.
+- **TOTAL** (right) — how much you have downloaded and uploaded **in total**.
 
-A blue arrow pointing down always means download. A green arrow pointing up
-always means upload.
+In each half the top row is download (blue arrow, pointing down) and the bottom
+row is upload (green arrow, pointing up). Every number shows its own unit, so
+`MB/s` and `Mbps` are never confused.
 
-**Hover** over it for a tooltip with the same numbers plus your adapter name.
-**Left click** it to open a details panel: which adapter is being measured,
-whether it is connected, its IP address, the speeds, the totals, and a button to
-reset the totals. **Right click** it for a menu: refresh, reset the download or
-upload total, open Windows network settings, open Windhawk, or hide the widget.
+## How to use it
 
-![Details panel](https://raw.githubusercontent.com/cracken7/TaskbarNetworkLounge/main/docs/panel.png)
+- **Hover** — a tooltip with the same numbers and the adapter being measured.
+- **Left click** — a details panel: adapter, connection, IP, speeds, totals, and
+  a button to reset the totals.
+- **Middle click** — cycle what the widget shows: both, then speed only, then
+  traffic only.
+- **Right click** — a menu to switch what is shown, toggle the SPEED / TOTAL
+  captions and the arrows, reset the counters, open Windows or Windhawk settings,
+  or hide the widget. Every choice is remembered.
 
-## What makes it different
+## Why it is different
 
-### It counts your VPN correctly
+**It counts your VPN correctly.** A VPN adds a second, virtual adapter, so your
+traffic passes through two of them and most meters count a 1 GB download as 2 GB.
+This mod measures only the one adapter Windows is actually using to reach the
+internet, so nothing is ever double-counted. The totals restart when your internet
+source changes, because a total from one connection says nothing about another.
 
-This is the main reason the mod exists.
+**The numbers are honest.** Speed is measured from Windows' own byte counters,
+sampled twice and divided by the exact elapsed time — never estimated, never
+parsed from `ipconfig` or PowerShell. It matched Windows' own counters to within
+0.06% over 22 seconds.
 
-When you turn on a VPN, Windows creates a second, virtual network adapter. Your
-real traffic now passes through **both** of them: once through the VPN adapter,
-and once through your real Ethernet or Wi-Fi adapter that actually carries it out
-to the internet. Most network meters add up every adapter they can see, so a 1 GB
-download gets counted twice and shows up as 2 GB.
+**You shape it.** Twenty-two arrow designs (or none at all), any installed font,
+five weights, a separate colour for download and for upload, a draggable divider,
+a resizable widget and panel, and layouts from two columns down to a single line.
 
-This mod measures **one adapter only** — the one Windows is actually using to
-reach the internet at that moment. So:
+## It stays out of the way
 
-* Turn a VPN on, and it follows the VPN.
-* Turn it off, and it goes back to your Ethernet or Wi-Fi.
-* Nothing is ever counted twice.
+One reading per second on a background thread, and it only repaints when a number
+on screen actually changes: about 0.3-0.5% of one CPU core and 30 MB of memory,
+with no leaks. The look is native — real acrylic, rounded corners, and it follows
+your light/dark theme.
 
-And because the totals for one connection say nothing about a different one, the
-totals restart from zero whenever your internet source changes. If you would
-rather keep one running total across every connection, there is a setting to turn
-that off.
+## Arabic
 
-You can also override the choice entirely: measure only Ethernet, only Wi-Fi, all
-adapters at once, or one specific adapter you name yourself.
-
-### The numbers are honest
-
-Speed is measured by asking Windows how many bytes your adapter has moved, twice,
-and dividing the difference by the exact time that passed between the two
-readings. Nothing is estimated, and no text output from `ipconfig`, `netstat` or
-PowerShell is parsed.
-
-Units are never ambiguous, because the unit is always written next to the number:
-`MB/s` means megabytes per second, `Mbps` means megabits per second. (There are 8
-bits in a byte, so these differ by 8x — mixing them up is the most common way a
-network reading gets misread.) You choose which one you want.
-
-### You can shape how it looks
-
-* **Arrows** — five styles: rounded, solid, chevron, triangle, or inside a
-  circle. You set the size too, as a percentage of the text size.
-* **Text** — four weights (bold, black, semibold, regular) and any size you want.
-* **The dividing line** — drag it left or right with the mouse to give one side
-  more room. Only the line moves; the numbers stay exactly where they are. You can
-  also dim it, hide it completely, or reset it from the right click menu.
-* **Sizes** — the widget and the details panel are both resizable, and you can
-  move the widget along the taskbar.
-* **Colours** — it follows your Windows light/dark theme by default, or you can
-  set the text colour yourself and switch the coloured arrows off.
-* **Layout** — speeds and totals side by side, speeds only in two rows, or
-  everything on a single line.
-
-### It stays out of the way
-
-It asks Windows for the numbers once a second (you can change that) on a
-background thread, and it only redraws when a number on screen actually changes.
-Measured on a normal desktop: **0.3–0.5% of one CPU core** and about **30 MB** of
-memory, with no leaks after 1500 redraws.
-
-The look is native, not a copy of one: real acrylic glass, rounded corners, Segoe
-UI, and it follows your light/dark theme. Text rendering was tuned by measurement
-rather than by eye, so small numbers stay sharp on top of the blurred background.
-
-### It speaks Arabic
-
-Every setting name, description and dropdown option is translated. Windhawk shows
-Arabic automatically when your Windows display language is Arabic.
+Every setting, description and option is translated. Windhawk shows Arabic
+automatically when your Windows display language is Arabic.
 
 ## Requirements
 
-Windows 11 for the rounded corners and glass effect. It works on Windows 10 too,
-with square corners. If the Windows Widgets button sits in the same place and
-covers it, turn Widgets off in Taskbar Settings, or move this widget with the
-**X offset** setting.
-
-## Good to know
-
-* The widget runs in its own separate helper process, so if something ever goes
-  wrong with it, your desktop and taskbar are unaffected. Because of that you will
-  see a second "Windows Explorer" entry in Task Manager, and other mods that
-  target Explorer are loaded into that helper as well.
-* It attaches to your main taskbar.
-* A single reading can differ from Task Manager by a few percent, because both are
-  taking snapshots at slightly different moments. Measured over 22 seconds, the
-  totals agreed with Windows' own counters to within 0.06%.
-* Source code, tests and full documentation:
-  [github.com/cracken7/TaskbarNetworkLounge](https://github.com/cracken7/TaskbarNetworkLounge)
-* Design references: the way the window is created, placed above the taskbar and
-  given its glass effect follows the approach used by **Taskbar Music Lounge** and
-  **Taskbar Network Speed Indicator** (`net-speed-taskbar` by NarayanChetri), both
-  of which were read while building this. No code was copied from either.
+Windows 11 for the glass and rounded corners (it works on Windows 10 with square
+corners), and Windhawk installed. If the Widgets button covers the meter, turn
+Widgets off or move the meter with the **X offset** setting.
 
 ---
 
 # مؤشر الشبكة لشريط المهام
 
-مؤشر صغير يستقرّ على شريط المهام ويعرض سرعة التحميل والرفع في اللحظة الحالية،
-وإجمالي ما استهلكته من بيانات.
+مؤشر شبكة حيّ على شريط مهام ويندوز 11: سرعة التحميل والرفع في اللحظة الحالية،
+وإجمالي ما استهلكته من بيانات — في ودجت زجاجي صغير يبدو جزءًا من ويندوز.
 
 ## ما تراه
 
-الودجت مقسوم إلى نصفين بخط رفيع:
+مستطيل واحد مقسوم إلى نصفين بخط رفيع:
 
-* **SPEED** (يسار) — سرعة التحميل والرفع في هذه اللحظة.
-* **TOTAL** (يمين) — إجمالي ما نزّلته وما رفعته.
+- **SPEED** (يسار) — سرعة التحميل والرفع **الآن**.
+- **TOTAL** (يمين) — إجمالي ما نزّلته وما رفعته **كليًّا**.
 
-السهم الأزرق المتّجه لأسفل يعني التحميل دائمًا، والسهم الأخضر المتّجه لأعلى يعني
-الرفع دائمًا.
+وفي كل نصف السطر الأعلى للتحميل (سهم أزرق لأسفل) والأسفل للرفع (سهم أخضر لأعلى).
+وكل رقم يعرض وحدته بجانبه، فلا يخلط أحد بين `MB/s` و`Mbps`.
 
-**مرِّر الماوس** فوقه ليظهر تلميح بنفس الأرقام مع اسم الكرت. **اضغط بالزر الأيسر**
-لتفتح لوحة التفاصيل: أي كرت يُقاس، وهل هو متصل، وعنوانه، والسرعات، والإجماليات، وزر
-لتصفير الإجماليات. **اضغط بالزر الأيمن** لتظهر قائمة: تحديث، تصفير إجمالي التحميل
-أو الرفع، فتح إعدادات شبكة ويندوز، فتح Windhawk، أو إخفاء الودجت.
+## كيف تستخدمه
 
-![لوحة التفاصيل](https://raw.githubusercontent.com/cracken7/TaskbarNetworkLounge/main/docs/panel.png)
+- **المرور بالماوس** — تلميح بنفس الأرقام مع اسم الكرت المقاس.
+- **الزر الأيسر** — لوحة تفاصيل: الكرت، والاتصال، وعنوان IP، والسرعات، والإجماليات،
+  وزر لتصفير الإجماليات.
+- **الزر الأوسط** — التنقّل بين ما يعرضه الودجت: الاثنان، ثم السرعة فقط، ثم
+  الترافيك فقط.
+- **الزر الأيمن** — قائمة لتبديل المعروض، وإظهار/إخفاء عنواني SPEED وTOTAL
+  والأسهم، وتصفير العدادات، وفتح إعدادات ويندوز أو Windhawk، أو إخفاء الودجت.
+  وكل اختيار يُحفَظ.
 
 ## ما يميّزه
 
-### يحسب الـVPN بشكل صحيح
+**يحسب الـVPN بشكل صحيح.** يضيف الـVPN كرتًا ثانيًا وهميًّا، فتمرّ بياناتك عبر
+كرتين، ومعظم المؤشرات تحسّب تحميل 1 جيجا على أنه 2 جيجا. هذا المود يقيس الكرت
+الواحد الذي يستخدمه ويندوز فعلًا للوصول إلى الإنترنت، فلا يُحسَب شيء مرتين.
+وتبدأ الإجماليات من الصفر عند تغيّر مصدر الإنترنت، لأن إجمالي اتصال لا يصف آخر.
 
-هذا هو السبب الأساسي لوجود هذا المود.
+**الأرقام صادقة.** تُقاس السرعة من عدّادات بايتات ويندوز نفسها، بقراءتين والقسمة
+على الزمن الفاصل بدقّة — بلا تقدير ولا قراءة لمخرجات `ipconfig` أو PowerShell.
+وطابقت عدّادات ويندوز بفرق لا يزيد عن 0.06% على مدى 22 ثانية.
 
-عند تشغيل VPN ينشئ ويندوز كرت شبكة ثانيًا وهميًّا. وبياناتك الحقيقية تمرّ عبر
-**الاثنين**: مرة عبر كرت الـVPN، ومرة عبر كرت الإيثرنت أو الواي فاي الحقيقي الذي
-يحملها فعلًا إلى الإنترنت. ومعظم مؤشرات الشبكة تجمع كل كرت تراه، فيُحسَب تحميل
-حجمه 1 جيجا مرتين ويظهر 2 جيجا.
+**أنت الذي تشكّله.** اثنان وعشرون شكل سهم (أو بلا أسهم)، وأي خط مثبت، وخمسة أوزان،
+ولون مستقل للتحميل وآخر للرفع، وخط فاصل قابل للسحب، وودجت ولوحة قابلان لتغيير
+الحجم، وتخطيطات من عمودين إلى سطر واحد.
 
-هذا المود يقيس **كرتًا واحدًا فقط** — الكرت الذي يستخدمه ويندوز فعلًا للوصول إلى
-الإنترنت في تلك اللحظة. أي:
+## لا يثقل على جهازك
 
-* شغّل VPN فيتابعه.
-* أوقِفه فيرجع إلى الإيثرنت أو الواي فاي.
-* ولا يُحسَب أي شيء مرتين.
+قراءة واحدة كل ثانية على خيط خلفي، ولا يعيد الرسم إلا عند تغيّر رقم ظاهر فعلًا:
+حوالي 0.3-0.5% من نواة معالج واحدة و30 ميجابايت من الذاكرة، وبلا تسريب. والمظهر
+أصلي — أكريليك حقيقي وحواف دائرية، ويتبع ثيمك الفاتح/الغامق.
 
-ولأن إجماليات اتصال معيّن لا تقول شيئًا عن اتصال آخر، تبدأ الإجماليات من الصفر عند
-تغيّر مصدر الإنترنت. ولو كنت تفضّل إجماليًّا واحدًا متراكمًا عبر كل الاتصالات، فهناك
-إعداد لإيقاف هذا السلوك.
+## العربية
 
-ويمكنك أيضًا تجاوز الاختيار التلقائي بالكامل: قِس الإيثرنت وحده، أو الواي فاي وحده،
-أو كل الكروت مجتمعة، أو كرتًا محددًا تكتب اسمه بنفسك.
-
-### الأرقام صادقة
-
-تُقاس السرعة بسؤال ويندوز عن عدد البايتات التي نقلها الكرت، مرتين، ثم قسمة الفرق
-على الزمن الذي مضى بين القراءتين بدقّة. لا يوجد أي تقدير، ولا قراءة لمخرجات
-`ipconfig` أو `netstat` أو PowerShell.
-
-والوحدات لا تلتبس أبدًا لأن الوحدة مكتوبة دائمًا بجانب الرقم: `MB/s` تعني ميجابايت
-في الثانية، و`Mbps` تعني ميجابِت في الثانية. (في البايت 8 بِتات، فالفرق بينهما 8
-أضعاف — والخلط بينهما هو أشهر سبب لقراءة أرقام الشبكة قراءة خاطئة.) والاختيار لك.
-
-### تتحكّم في شكله
-
-* **الأسهم** — خمسة أشكال: دائري الأطراف، أو صلب، أو شيفرون، أو مثلث، أو داخل
-  دائرة. وتحدّد حجمها أيضًا كنسبة من حجم الخط.
-* **الخط** — أربعة أوزان (عريض، أسود، نصف عريض، عادي) وأي حجم تريده.
-* **الخط الفاصل** — اسحبه يمينًا أو شمالًا بالماوس لتوسّع أحد الجانبين. الخط وحده
-  هو الذي يتحرك، والأرقام تبقى في مكانها تمامًا. ويمكنك تخفيته أو إخفاؤه كليًّا أو
-  إرجاعه للمنتصف من قائمة الزر الأيمن.
-* **المقاسات** — الودجت ولوحة التفاصيل كلاهما قابل لتغيير الحجم، ويمكنك تحريك
-  الودجت على طول شريط المهام.
-* **الألوان** — يتبع ثيم ويندوز الفاتح/الغامق افتراضيًّا، أو حدّد لون النص بنفسك
-  وأوقِف تلوين الأسهم.
-* **التخطيط** — السرعات والإجماليات جنبًا إلى جنب، أو السرعات وحدها في سطرين، أو
-  كل شيء في سطر واحد.
-
-### لا يثقل على جهازك
-
-يسأل ويندوز عن الأرقام مرة كل ثانية (والمدة قابلة للتغيير) على خيط في الخلفية، ولا
-يعيد الرسم إلا عند تغيّر رقم ظاهر على الشاشة فعلًا. وبالقياس على جهاز عادي:
-**0.3–0.5% من نواة معالج واحدة** وحوالي **30 ميجابايت** من الذاكرة، وبلا أي تسريب
-بعد 1500 عملية رسم.
-
-والمظهر أصلي لا مجرد محاكاة: زجاج أكريليك حقيقي، وحواف دائرية، وخط Segoe UI،
-ويتبع الثيم الفاتح والغامق. وقد ضُبط رسم النص بالقياس لا بالنظر، فتبقى الأرقام
-الصغيرة حادّة فوق الخلفية الضبابية.
-
-### يتكلّم العربية
-
-كل اسم إعداد ووصفه وكل خيار في القوائم مترجم. ويعرض Windhawk العربية تلقائيًّا حين
-تكون لغة عرض ويندوز عربية.
+كل إعداد ووصف وخيار مترجم. ويعرض Windhawk العربية تلقائيًّا حين تكون لغة عرض
+ويندوز عربية.
 
 ## المتطلبات
 
-ويندوز 11 للحصول على الحواف الدائرية والتأثير الزجاجي، ويعمل على ويندوز 10 أيضًا
-بحواف قائمة. ولو كان زر Widgets في ويندوز يشغل نفس المكان ويغطّيه، فأوقِف Widgets
-من إعدادات شريط المهام، أو حرّك هذا الودجت بإعداد **الإزاحة الأفقية**.
+ويندوز 11 للزجاج والحواف الدائرية (ويعمل على ويندوز 10 بحواف قائمة)، مع تثبيت
+Windhawk. ولو غطّى زر Widgets المؤشر، فأوقِف Widgets أو حرّكه بإعداد **الإزاحة
+الأفقية**.
 
-## معلومات مفيدة
-
-* يعمل الودجت في عملية مساعدة منفصلة خاصة به، فلو حدث أي خطأ فيه لن يتأثر سطح
-  المكتب ولا شريط المهام. ولهذا سترى سطرًا ثانيًا باسم "Windows Explorer" في مدير
-  المهام، وأي مود آخر يستهدف Explorer سيُحمَّل في تلك العملية المساعدة أيضًا.
-* يرتبط بشريط المهام الرئيسي.
-* قد تختلف قراءة واحدة عن مدير المهام بنسبة قليلة لأن كلًّا منهما يأخذ لقطاته في
-  لحظات مختلفة قليلًا. وبالقياس على مدى 22 ثانية، طابقت الإجماليات عدّادات ويندوز
-  نفسها بفرق لا يزيد عن 0.06%.
-* الكود والاختبارات والشرح الكامل:
-  [github.com/cracken7/TaskbarNetworkLounge](https://github.com/cracken7/TaskbarNetworkLounge)
-* مراجع التصميم: طريقة إنشاء النافذة ووضعها فوق شريط المهام وإعطاؤها التأثير
-  الزجاجي تتبع ما يفعله مودَا **Taskbar Music Lounge** و**Taskbar Network Speed
-  Indicator** (`net-speed-taskbar` لـNarayanChetri)، وقد قرأتُ الاثنين أثناء بناء
-  هذا المود، ولم يُنسَخ أي كود من أيٍّ منهما.
 */
 // ==/WindhawkModReadme==
 
@@ -269,6 +162,11 @@ covers it, turn Widgets off in Taskbar Settings, or move this widget with the
     $description: Size of the numbers. 13 is the clearest; use 11 or 12 for a smaller widget.
     $name:ar: حجم الخط
     $description:ar: حجم الأرقام. القيمة 13 هي الأوضح، واستخدم 11 أو 12 لودجت أصغر.
+  - FontFamily: ""
+    $name: Font family
+    $description: The font used for all text. Leave empty for Segoe UI (recommended). Any installed font works, e.g. Consolas, Arial, Tahoma, Segoe UI Variable Display, Bahnschrift. If the name is wrong or the font is missing, Segoe UI is used automatically.
+    $name:ar: نوع الخط
+    $description:ar: الخط المستخدم في كل النص. اتركه فارغًا لاستخدام Segoe UI (المُستحسن). أي خط مثبت يعمل، مثل Consolas وArial وTahoma وSegoe UI Variable Display وBahnschrift. ولو كان الاسم خطأ أو الخط غير مثبت، يُستخدم Segoe UI تلقائيًّا.
   - TextWeight: bold
     $name: Text weight
     $options:
@@ -276,37 +174,87 @@ covers it, turn Widgets off in Taskbar Settings, or move this widget with the
     - black: Black (heaviest - Segoe UI Black)
     - semibold: Semibold
     - regular: Regular
+    - italic: Italic
     $name:ar: وزن الخط
     $options:ar:
     - bold: عريض (الأوضح - مُستحسن)
     - black: أسود (الأثقل - Segoe UI Black)
     - semibold: نصف عريض
     - regular: عادي
+    - italic: مائل
   - ArrowStyle: rounded
     $name: Arrow style
+    $description: The shape of the download / upload arrows - 22 shapes. Pick "No arrows" to hide them completely and keep only the numbers; you can also toggle them from the right click menu without losing your shape choice.
     $options:
     - solid: Solid arrow (stem + head)
     - rounded: Rounded arrow (soft, Fluent-like)
     - chevron: Chevron (thin, modern)
     - triangle: Triangle (compact, no stem)
     - circle: Arrow in a circle (badge)
+    - double: Double chevron (stacked)
+    - triple: Triple chevron (speed lines)
+    - outline: Outline arrow (hollow)
+    - thin: Hairline arrow (minimal)
+    - fat: Block arrow (wide, bold)
+    - head: Arrowhead only (no stem)
+    - ring: Chevron in a ring
+    - square: Arrow in a rounded square
+    - fade: Fading arrow (gradient tail)
+    - dashed: Dashed shaft arrow
+    - barb: Barbed arrow (broadhead)
+    - needle: Needle dart (sleek)
+    - dot: Arrow with tail dot
+    - feather: Fletched arrow
+    - layered: Two-tone layered arrow
+    - tray: Arrow into a tray (download/upload icon)
+    - plus: Arrow with a plus bar (+)
+    - none: No arrows (hide them)
     $name:ar: شكل السهم
+    $description:ar: شكل أسهم التحميل والرفع - 22 شكلًا. اختر "بدون أسهم" لإخفائها تمامًا والإبقاء على الأرقام فقط، ويمكنك أيضًا تبديل إظهارها من قائمة الزر الأيمن دون أن يفقدك اختيارك للشكل.
     $options:ar:
     - solid: سهم صلب (ساق + رأس)
     - rounded: سهم دائري الأطراف (ناعم، شبيه بـFluent)
     - chevron: شيفرون (رفيع وعصري)
     - triangle: مثلث (مضغوط، بدون ساق)
     - circle: سهم داخل دائرة (شعار)
+    - double: شيفرون مزدوج (مكدّس)
+    - triple: شيفرون ثلاثي (خطوط سرعة)
+    - outline: سهم مفرّغ (مخطط فقط)
+    - thin: سهم خيطي (أدنى حد)
+    - fat: سهم كتلي (عريض وبارز)
+    - head: رأس سهم فقط (بدون ساق)
+    - ring: شيفرون داخل حلقة
+    - square: سهم داخل مربع دائري
+    - fade: سهم متلاشٍ (تدرّج من الذيل)
+    - dashed: سهم بساق متقطّعة
+    - barb: سهم بخطّافات (رأس صيد)
+    - needle: سهم إبرة (رمحة انسيابية)
+    - dot: سهم بنقطة عند الذيل
+    - feather: سهم بريش
+    - layered: سهم بطبقتين (ظلّ ولون)
+    - tray: سهم في درج (أيقونة التحميل/الرفع)
+    - plus: سهم بعلامة زائد (+)
+    - none: بدون أسهم (إخفاؤها)
   - ArrowScale: 120
     $name: Arrow size (% of font size)
     $description: Arrow size relative to the text. 120 means the arrow is 1.2x as tall as the numbers. It never grows past what fits, so for really big arrows increase Panel height too. Range 60-400.
     $name:ar: حجم السهم (% من حجم الخط)
     $description:ar: حجم السهم بالنسبة للنص. القيمة 120 تعني أن السهم أطول من الأرقام بمقدار 1.2 ضعف. ولن يكبر أبدًا أكثر من المساحة المتاحة، فلو أردت أسهمًا كبيرة فعلًا زوّد ارتفاع الودجت أيضًا. المدى 60-400.
-  - ShowColumnLabels: true
-    $name: Show SPEED / TOTAL captions
-    $description: Small labels above the two halves, so it is clear which side is your current speed and which is your total usage.
-    $name:ar: إظهار عنواني SPEED / TOTAL
-    $description:ar: عنوانان صغيران فوق النصفين، ليتضح أي جانب هو سرعتك الحالية وأيهما إجمالي استهلاكك.
+  - ShowColumnLabels: both
+    $name: SPEED / TOTAL captions
+    $description: The small labels above the two halves. Choose which ones stay visible, or hide both. You can also tick them on and off from the right click menu.
+    $options:
+    - both: Show both SPEED and TOTAL
+    - speed: Show only SPEED
+    - total: Show only TOTAL
+    - none: Hide both captions
+    $name:ar: عنوانا SPEED / TOTAL
+    $description:ar: العنوانان الصغيران فوق النصفين. اختر أيهما يبقى ظاهرًا أو أخفِ الاثنين، ويمكنك أيضًا تحديدهما من قائمة الزر الأيمن.
+    $options:ar:
+    - both: إظهار SPEED وTOTAL معًا
+    - speed: إظهار SPEED فقط
+    - total: إظهار TOTAL فقط
+    - none: إخفاء الاثنين
   - DividerPos: 50
     $name: Divider position (% of width)
     $description: Where the dividing line sits, which also decides how much room each half gets. 50 splits it evenly; a lower number gives the speeds more room. Range 20-80.
@@ -343,6 +291,24 @@ covers it, turn Widgets off in Taskbar Settings, or move this widget with the
     - full: السرعات + الإجماليات (عمودان)
     - speeds: السرعات فقط (سطران)
     - oneline: السرعات فقط (سطر واحد)
+  - DisplayMode: both
+    $name: Show traffic or speed
+    $description: Which half the widget shows. "Both" keeps the two-column layout. You can also switch live from the right click menu (Show both / Show speed only / Show traffic only) or by middle clicking the widget, which cycles through the three. The widget remembers that choice across restarts; changing this setting applies its value again.
+    $options:
+    - both: Show both speed and traffic
+    - speed: Show speed only
+    - traffic: Show traffic (totals) only
+    $name:ar: عرض الترافيك أو السبيد
+    $description:ar: أي جانب يعرضه الودجت. "الاثنان" يبقي تخطيط العمودين. ويمكنك التبديل فورًا من قائمة الزر الأيمن (عرض الاثنين / السرعة فقط / الترافيك فقط) أو بالضغط الأوسط على الودجت للتنقّل بين الأشكال الثلاثة، والودجت يتذكر اختيارك بعد إعادة التشغيل. وتغيير هذا الإعداد يعيد تطبيق قيمته.
+    $options:ar:
+    - both: عرض السرعة والترافيك معًا
+    - speed: عرض السرعة فقط
+    - traffic: عرض الترافيك (الإجماليات) فقط
+  - CycleOnMiddleClick: true
+    $name: Middle click switches speed / traffic
+    $description: Press the mouse wheel (middle click) on the widget to cycle through both, speed only, and traffic only.
+    $name:ar: التبديل بالضغط الأوسط
+    $description:ar: اضغط بعجلة الماوس (الزر الأوسط) على الودجت للتنقّل بين عرض الاثنين ثم السرعة فقط ثم الترافيك فقط.
   - OffsetX: 12
     $name: X offset
     $description: How far along the taskbar the widget sits, measured from the left edge. Increase it to move the widget right, e.g. to get out from under the Widgets button. (Measured from the top edge if your taskbar is vertical.)
@@ -366,11 +332,21 @@ covers it, turn Widgets off in Taskbar Settings, or move this widget with the
     $description: Only used when Auto theme is off. Write it as 0xRRGGBB, e.g. 0xFFFFFF for white or 0xFF6060 for red.
     $name:ar: لون النص اليدوي (hex)
     $description:ar: يُستخدم فقط عند إيقاف الثيم التلقائي. اكتبه بالصيغة 0xRRGGBB، مثل 0xFFFFFF للأبيض أو 0xFF6060 للأحمر.
+  - DownloadColor: ""
+    $name: Download color (hex)
+    $description: A custom colour for the download half - its arrow AND its numbers. Leave empty (or write auto) to keep the default blue accent. Write it as 0xRRGGBB, e.g. 0xFF4D4D for red.
+    $name:ar: لون التحميل (hex)
+    $description:ar: لون مخصص لجانب التحميل — سهمه وأرقامه معًا. اتركه فارغًا (أو اكتب auto) للإبقاء على الأزرق الافتراضي. اكتبه بالصيغة 0xRRGGBB، مثل 0xFF4D4D للأحمر.
+  - UploadColor: ""
+    $name: Upload color (hex)
+    $description: A custom colour for the upload half - its arrow AND its numbers. Leave empty (or write auto) to keep the default green accent. Write it as 0xRRGGBB, e.g. 0x66CCFF for sky blue.
+    $name:ar: لون الرفع (hex)
+    $description:ar: لون مخصص لجانب الرفع — سهمه وأرقامه معًا. اتركه فارغًا (أو اكتب auto) للإبقاء على الأخضر الافتراضي. اكتبه بالصيغة 0xRRGGBB، مثل 0x66CCFF للأزرق السماوي.
   - ColorArrows: true
     $name: Colored arrows
-    $description: Blue arrow for download, green for upload. Turn this off to draw both in the text colour.
+    $description: Blue arrow for download, green for upload. Turn this off to draw both in the text colour. The Download / Upload color settings below override this for one direction at a time.
     $name:ar: أسهم ملوّنة
-    $description:ar: سهم أزرق للتحميل وأخضر للرفع. أوقِفه لرسم الاثنين بلون النص.
+    $description:ar: سهم أزرق للتحميل وأخضر للرفع. أوقِفه لرسم الاثنين بلون النص. وإعدادا لون التحميل ولون الرفع بالأسفل يستبدلان هذا اللون لاتجاه واحد.
   - BgOpacity: 0
     $name: Acrylic tint opacity (0-255)
     $description: Adds a solid tint behind the glass. Keep it at 0 for clear glass; raise it if your wallpaper makes the numbers hard to read.

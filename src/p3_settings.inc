@@ -29,12 +29,79 @@ static bool StringSettingIs(const std::wstring& value, const wchar_t* expected) 
     return _wcsicmp(value.c_str(), expected) == 0;
 }
 
+// Parse "0xRRGGBB", "#RRGGBB" or "RRGGBB" into an RGB DWORD. Returns fallback on
+// empty/invalid input.
+static DWORD ParseHexColor(const std::wstring& text, DWORD fallback) {
+    if (text.empty()) {
+        return fallback;
+    }
+    const wchar_t* p = text.c_str();
+    while (*p == L' ' || *p == L'\t') {
+        p++;
+    }
+    if (*p == L'#') {
+        p++;
+    } else if (p[0] == L'0' && (p[1] == L'x' || p[1] == L'X')) {
+        p += 2;
+    }
+    wchar_t* end = nullptr;
+    unsigned long parsed = wcstoul(p, &end, 16);
+    if (end == p) {
+        return fallback;
+    }
+    return (DWORD)(parsed & 0xFFFFFF);
+}
+
+// Like ParseHexColor but treats empty / "auto" / "default" as "not set" (0), so
+// the caller can tell "user picked a colour" from "leave it to the theme".
+static DWORD ParseHexColorOrAuto(const std::wstring& text) {
+    if (text.empty() || StringSettingIs(text, L"auto") ||
+        StringSettingIs(text, L"default")) {
+        return 0;
+    }
+    return 0xFF000000 | ParseHexColor(text, 0);
+}
+
+// The right-click menu toggles a few things the settings YAML also exposes
+// (display mode, captions, arrows). Those live toggles are the source of truth
+// while the mod runs; the settings act as defaults that are applied only when
+// their value actually changes (or the first time they are ever seen). Without
+// this, any unrelated LoadSettings() - a divider drag ending, saving a different
+// setting - would stomp a mode the user picked from the menu. The last applied
+// value is remembered in the mod's own storage, same trick as the reset
+// dropdown. Returns true when the caller should apply the new setting value.
+static bool SettingChangedSinceLastApply(PCWSTR settingName,
+                                         PCWSTR lastAppliedKey,
+                                         std::wstring* currentOut) {
+    std::wstring current = ReadStringSetting(settingName);
+    WCHAR previous[64] = {};
+    Wh_GetStringValue(lastAppliedKey, previous, ARRAYSIZE(previous));
+    const bool firstTime = previous[0] == L'\0';
+    const bool changed =
+        !firstTime && _wcsicmp(previous, current.c_str()) != 0;
+    if (firstTime || changed) {
+        Wh_SetStringValue(lastAppliedKey, current.c_str());
+    }
+    *currentOut = std::move(current);
+    return firstTime || changed;
+}
+
 static void LoadSettings() {
     ModSettings s;
 
     s.width = ClampInt(Wh_GetIntSetting(L"Appearance.PanelWidth"), 80, 1200);
     s.height = ClampInt(Wh_GetIntSetting(L"Appearance.PanelHeight"), 20, 200);
     s.fontSize = ClampInt(Wh_GetIntSetting(L"Appearance.FontSize"), 6, 40);
+
+    s.fontFamily = ReadStringSetting(L"Appearance.FontFamily");
+    // Trim: a stray space makes GDI+ fail to find the family.
+    while (!s.fontFamily.empty() && (s.fontFamily.back() == L' ' || s.fontFamily.front() == L' ')) {
+        if (s.fontFamily.back() == L' ') {
+            s.fontFamily.pop_back();
+        } else {
+            s.fontFamily.erase(0, 1);
+        }
+    }
 
     std::wstring weight = ReadStringSetting(L"Appearance.TextWeight");
     if (StringSettingIs(weight, L"black")) {
@@ -43,25 +110,72 @@ static void LoadSettings() {
         s.textWeight = TextWeight::Semibold;
     } else if (StringSettingIs(weight, L"regular")) {
         s.textWeight = TextWeight::Regular;
+    } else if (StringSettingIs(weight, L"italic")) {
+        s.textWeight = TextWeight::Italic;
     } else {
         s.textWeight = TextWeight::Bold;
     }
 
-    std::wstring arrow = ReadStringSetting(L"Appearance.ArrowStyle");
-    if (StringSettingIs(arrow, L"chevron")) {
-        s.arrowStyle = ArrowStyle::Chevron;
-    } else if (StringSettingIs(arrow, L"triangle")) {
-        s.arrowStyle = ArrowStyle::Triangle;
-    } else if (StringSettingIs(arrow, L"rounded")) {
-        s.arrowStyle = ArrowStyle::Rounded;
-    } else if (StringSettingIs(arrow, L"circle")) {
-        s.arrowStyle = ArrowStyle::Circle;
-    } else {
-        s.arrowStyle = ArrowStyle::Solid;
+    // Arrow style: table-driven so the YAML option strings and the enum stay in
+    // one place. Unknown values fall back to Solid, as before. "none" is the
+    // hide-arrows choice: it sets the hidden flag but keeps the last shape, so
+    // showing them again restores what the user had.
+    static const struct { const wchar_t* name; ArrowStyle style; } kArrowStyles[] = {
+        {L"solid", ArrowStyle::Solid},       {L"chevron", ArrowStyle::Chevron},
+        {L"triangle", ArrowStyle::Triangle}, {L"rounded", ArrowStyle::Rounded},
+        {L"circle", ArrowStyle::Circle},     {L"double", ArrowStyle::Double},
+        {L"triple", ArrowStyle::Triple},     {L"outline", ArrowStyle::Outline},
+        {L"thin", ArrowStyle::Thin},         {L"fat", ArrowStyle::Fat},
+        {L"head", ArrowStyle::Head},         {L"ring", ArrowStyle::Ring},
+        {L"square", ArrowStyle::Square},     {L"fade", ArrowStyle::Fade},
+        {L"dashed", ArrowStyle::Dashed},     {L"barb", ArrowStyle::Barb},
+        {L"needle", ArrowStyle::Needle},     {L"dot", ArrowStyle::Dot},
+        {L"feather", ArrowStyle::Feather},   {L"layered", ArrowStyle::Layered},   {L"tray", ArrowStyle::Tray},
+        {L"plus", ArrowStyle::Plus},
+        {L"none", ArrowStyle::None},
+    };
+    std::wstring arrow;
+    if (SettingChangedSinceLastApply(L"Appearance.ArrowStyle",
+                                     L"LastArrowStyleApplied", &arrow)) {
+        for (const auto& entry : kArrowStyles) {
+            if (StringSettingIs(arrow, entry.name)) {
+                if (entry.style == ArrowStyle::None) {
+                    g_arrowsHidden = 1;
+                } else {
+                    g_arrowStyle = (int)entry.style;
+                    g_arrowsHidden = 0;
+                }
+                Wh_SetIntValue(L"ArrowStyle", g_arrowStyle.load());
+                Wh_SetIntValue(L"ArrowsHidden", g_arrowsHidden.load());
+                break;
+            }
+        }
     }
+    s.arrowStyle = g_arrowsHidden.load()
+                       ? ArrowStyle::None
+                       : (ArrowStyle)ClampInt(g_arrowStyle.load(), 0,
+                                              (int)ArrowStyle::Plus);
 
     s.arrowScale = ClampInt(Wh_GetIntSetting(L"Appearance.ArrowScale"), 60, 400);
-    s.showColumnLabels = Wh_GetIntSetting(L"Appearance.ShowColumnLabels") != 0;
+    std::wstring captions;
+    if (SettingChangedSinceLastApply(L"Appearance.ShowColumnLabels",
+                                     L"LastCaptionsApplied", &captions)) {
+        int bits = 3;
+        if (StringSettingIs(captions, L"speed")) {
+            bits = 1;
+        } else if (StringSettingIs(captions, L"total")) {
+            bits = 2;
+        } else if (StringSettingIs(captions, L"none")) {
+            bits = 0;
+        }
+        g_captionBits = bits;
+        Wh_SetIntValue(L"CaptionBits", bits);
+    }
+    const int captionBits = g_captionBits.load();
+    s.captions = captionBits == 3   ? CaptionMode::Both
+                 : captionBits == 1 ? CaptionMode::SpeedOnly
+                 : captionBits == 2 ? CaptionMode::TotalOnly
+                                    : CaptionMode::None;
     s.dividerPos = ClampInt(Wh_GetIntSetting(L"Appearance.DividerPos"), 20, 80);
     // The dragged offset lives in the mod's own storage, not in the settings YAML:
     // Windhawk's settings UI has no draggable control, and writing a setting from
@@ -89,30 +203,40 @@ static void LoadSettings() {
         s.layout = LayoutMode::Full;
     }
 
+    // Display mode: same live-toggle model as arrows and captions - the setting
+    // is applied only when it actually changes (or on first run), so a mode
+    // picked from the right-click menu survives unrelated LoadSettings() calls
+    // (e.g. a divider drag ending).
+    std::wstring display;
+    if (SettingChangedSinceLastApply(L"Appearance.DisplayMode",
+                                     L"LastDisplayModeApplied", &display)) {
+        int modeDefault = StringSettingIs(display, L"speed")
+                              ? 1
+                              : (StringSettingIs(display, L"traffic") ? 2 : 0);
+        g_displayMode = modeDefault;
+        Wh_SetIntValue(L"DisplayMode", modeDefault);
+    }
+    const int displayMode = ClampInt(g_displayMode.load(), 0, 2);
+    s.display = displayMode == 1 ? LayoutMode::Speeds
+                                 : (displayMode == 2 ? LayoutMode::OneLine
+                                                     : LayoutMode::Full);
+    s.cycleOnMiddleClick =
+        Wh_GetIntSetting(L"Appearance.CycleOnMiddleClick") != 0;
+
     s.offsetX = ClampInt(Wh_GetIntSetting(L"Appearance.OffsetX"), -4000, 4000);
     s.offsetY = ClampInt(Wh_GetIntSetting(L"Appearance.OffsetY"), -4000, 4000);
     s.dpiScaling = Wh_GetIntSetting(L"Appearance.DpiScaling") != 0;
     s.autoTheme = Wh_GetIntSetting(L"Appearance.AutoTheme") != 0;
 
-    std::wstring colorText = ReadStringSetting(L"Appearance.TextColor");
-    DWORD rgb = 0xFFFFFF;
-    if (!colorText.empty()) {
-        const wchar_t* p = colorText.c_str();
-        while (*p == L' ' || *p == L'\t') {
-            p++;
-        }
-        if (*p == L'#') {
-            p++;
-        } else if (p[0] == L'0' && (p[1] == L'x' || p[1] == L'X')) {
-            p += 2;
-        }
-        wchar_t* end = nullptr;
-        unsigned long parsed = wcstoul(p, &end, 16);
-        if (end != p) {
-            rgb = (DWORD)(parsed & 0xFFFFFF);
-        }
-    }
-    s.manualTextColor = 0xFF000000 | rgb;
+    s.manualTextColor = 0xFF000000 | ParseHexColor(
+                            ReadStringSetting(L"Appearance.TextColor"), 0xFFFFFF);
+
+    // Per-direction colours: empty / "auto" means "not set" (0) so the painter
+    // keeps the theme accent; any hex recolours that half (arrow + numbers).
+    s.downloadColor = ParseHexColorOrAuto(
+        ReadStringSetting(L"Appearance.DownloadColor"));
+    s.uploadColor =
+        ParseHexColorOrAuto(ReadStringSetting(L"Appearance.UploadColor"));
 
     s.colorArrows = Wh_GetIntSetting(L"Appearance.ColorArrows") != 0;
     s.bgOpacity = ClampInt(Wh_GetIntSetting(L"Appearance.BgOpacity"), 0, 255);
