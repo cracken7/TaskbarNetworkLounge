@@ -28,12 +28,12 @@
 #include <gdiplus.h>
 #include <shellapi.h>
 #include <shlobj.h>
-#include <shobjidl.h>
 #include <windowsx.h>
 
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <climits>
 #include <cstdio>
 #include <cwctype>
 #include <memory>
@@ -48,16 +48,23 @@ using namespace Gdiplus;
 static const WCHAR* kFontName = L"Segoe UI";
 static const WCHAR* kWidgetClass = L"WindhawkNetworkLoungeWidget";
 static const WCHAR* kPanelClass = L"WindhawkNetworkLoungePanel";
-static const WCHAR* kStorageDirName = L"TaskbarNetworkLounge";
-static const WCHAR* kStorageFileName = L"traffic.dat";
 
 // Timers / messages
 #define IDT_WATCHDOG 1001
 #define IDT_ANIM 1002
+// Polls for a click outside the details panel. SetForegroundWindow is routinely
+// refused for a process that isn't already in the foreground (the widget is
+// WS_EX_NOACTIVATE, so clicking it grants no foreground rights), and without
+// activation the panel never gets WM_ACTIVATE/WA_INACTIVE - so "click elsewhere to
+// dismiss" cannot rely on activation alone.
+#define IDT_PANEL_DISMISS 1003
 #define APP_WM_CLOSE (WM_APP + 0)
 #define APP_WM_REPOSITION (WM_APP + 10)
 #define APP_WM_DATA_UPDATED (WM_APP + 11)
 #define APP_WM_TOGGLE_PANEL (WM_APP + 12)
+// Own message for "settings changed", rather than synthesizing a system
+// WM_SETTINGCHANGE broadcast whose wParam/lParam would then have to be ignored.
+#define APP_WM_SETTINGS_CHANGED (WM_APP + 13)
 
 // Context menu ids
 #define IDM_REFRESH 100
@@ -142,7 +149,6 @@ struct ModSettings {
     int width = 220;
     int height = 52;
     int fontSize = 13;
-    bool boldText = true;
     TextWeight textWeight = TextWeight::Bold;
     ArrowStyle arrowStyle = ArrowStyle::Rounded;
     int arrowScale = 120;       // percent of font size
@@ -205,12 +211,21 @@ static HWND g_hPanel = nullptr;
 static HWND g_hTooltip = nullptr;
 static std::thread* g_uiThread = nullptr;
 static std::thread* g_workerThread = nullptr;
+// The UI thread's own id, published before it creates any window. Shutdown posts
+// WM_QUIT to the THREAD, not to a window: if uninit runs before the window exists
+// (mod disabled or reloaded right after start), a window-targeted message would go
+// nowhere and join() would block forever.
+static std::atomic<DWORD> g_uiThreadId{0};
 static HANDLE g_stopEvent = nullptr;   // manual reset: shut worker down
 static HANDLE g_wakeEvent = nullptr;   // auto reset: sample immediately
-static std::atomic<bool> g_running{false};
 static std::atomic<bool> g_panelVisible{false};
 static std::atomic<unsigned long long> g_panelHiddenAt{0};  // GetTickCount64
-static std::atomic<int> g_hoverState{0};  // 0 none, 1 widget, 2 reset button
+// Hover state is split per window so moving the mouse over one cannot clear the
+// other's highlight.
+// Widget: 0 = none, 1 = body, 2 = divider grab zone.
+static std::atomic<int> g_widgetHover{0};
+// Details panel: 0 = none, 1 = Reset button.
+static std::atomic<int> g_panelHover{0};
 static std::atomic<bool> g_hiddenByUser{false};
 static std::atomic<unsigned long long> g_pendingReset{0};  // bit0 dl, bit1 ul
 // Divider drag state. g_dividerHitX is written by the painter every frame so the

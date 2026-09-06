@@ -61,6 +61,25 @@ static std::map<std::wstring, int> g_intStorage;
     return TRUE;
 }
 
+// Mod-local binary storage (used by the persistent traffic totals).
+static std::map<std::wstring, std::string> g_binaryStorage;
+
+[[maybe_unused]] static size_t Wh_GetBinaryValue(const wchar_t* name, void* buffer,
+                                                size_t size) {
+    auto it = g_binaryStorage.find(name);
+    if (it == g_binaryStorage.end() || it->second.size() != size) {
+        return 0;
+    }
+    memcpy(buffer, it->second.data(), size);
+    return size;
+}
+
+[[maybe_unused]] static BOOL Wh_SetBinaryValue(const wchar_t* name,
+                                               const void* buffer, size_t size) {
+    g_binaryStorage[name] = std::string((const char*)buffer, size);
+    return TRUE;
+}
+
 #include "../src/p2_core.inc"
 #include "../src/p3_settings.inc"
 #include "../src/p4_network.inc"

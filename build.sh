@@ -39,7 +39,7 @@ echo "Generated $MOD_SRC ($(wc -l < "$MOD_SRC") lines)"
   -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers \
   -o "$(to_native "$OUT")" "$(to_native "$MOD_SRC")" \
   "$(to_native "$ENGINE_LIB")" \
-  -lole32 -ldwmapi -lgdi32 -luser32 -lshcore -lgdiplus -lshell32 \
+  -lole32 -ldwmapi -lgdi32 -luser32 -lgdiplus -lshell32 \
   -lcomctl32 -liphlpapi -lws2_32
 
 echo "Built $OUT"

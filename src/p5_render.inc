@@ -74,28 +74,37 @@ static void AddRoundedRect(GraphicsPath& path,
 
 // DPI of the monitor the widget lives on; used to scale everything so the widget
 // looks identical at 100% / 125% / 150% / 175% / 200%.
+//
+// The DPI entry points are resolved once into function-local statics: this runs on
+// every paint and on every WM_MOUSEMOVE (twice, via the divider hit test), so a
+// GetProcAddress per call would be pure overhead.
 static double GetScaleForWindow(HWND hwnd) {
     ModSettings s = GetSettings();
     if (!s.dpiScaling) {
         return 1.0;
     }
-    UINT dpi = 0;
-    HMODULE user32 = GetModuleHandleW(L"user32.dll");
-    if (user32) {
-        using GetDpiForWindow_t = UINT(WINAPI*)(HWND);
-        auto getDpiForWindow =
-            (GetDpiForWindow_t)GetProcAddress(user32, "GetDpiForWindow");
-        if (getDpiForWindow && hwnd) {
-            dpi = getDpiForWindow(hwnd);
-        }
-        if (!dpi) {
-            using GetDpiForSystem_t = UINT(WINAPI*)();
-            auto getDpiForSystem =
+
+    using GetDpiForWindow_t = UINT(WINAPI*)(HWND);
+    using GetDpiForSystem_t = UINT(WINAPI*)();
+    static GetDpiForWindow_t getDpiForWindow = nullptr;
+    static GetDpiForSystem_t getDpiForSystem = nullptr;
+    static bool resolved = false;
+    if (!resolved) {
+        resolved = true;
+        if (HMODULE user32 = GetModuleHandleW(L"user32.dll")) {
+            getDpiForWindow =
+                (GetDpiForWindow_t)GetProcAddress(user32, "GetDpiForWindow");
+            getDpiForSystem =
                 (GetDpiForSystem_t)GetProcAddress(user32, "GetDpiForSystem");
-            if (getDpiForSystem) {
-                dpi = getDpiForSystem();
-            }
         }
+    }
+
+    UINT dpi = 0;
+    if (getDpiForWindow && hwnd) {
+        dpi = getDpiForWindow(hwnd);
+    }
+    if (!dpi && getDpiForSystem) {
+        dpi = getDpiForSystem();
     }
     if (!dpi) {
         HDC screen = GetDC(nullptr);
@@ -392,9 +401,9 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
         upColor = light ? Color(255, 13, 106, 13) : Color(255, 138, 238, 158);
     }
 
-    // Hover background (only for the widget's own hover state, not the panel's
-    // Reset button hover, which shares the same variable).
-    if (g_hoverState.load() == 1) {
+    // Hover background for the widget body only - not for the divider grab zone,
+    // which gets its own highlight on the line itself.
+    if (g_widgetHover.load() == 1) {
         GraphicsPath hoverPath;
         AddRoundedRect(hoverPath, 1.0f, 1.0f, (REAL)width - 2.0f,
                        (REAL)height - 2.0f, (REAL)(8.0 * scale));
@@ -541,7 +550,7 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
     }
     g_dividerHitX = (float)dividerX;
 
-    if (s.dividerOpacity > 0 || (s.dividerDraggable && g_hoverState.load() == 3)) {
+    if (s.dividerOpacity > 0 || (s.dividerDraggable && g_widgetHover.load() == 2)) {
         // While being dragged (or hovered) the line brightens, so it is obvious
         // that it is the thing being grabbed even at opacity 0.
         BYTE alpha = (BYTE)s.dividerOpacity;
@@ -549,7 +558,7 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
         if (g_dividerDragging.load()) {
             alpha = 220;
             thickness = (REAL)(2.0 * scale);
-        } else if (g_hoverState.load() == 3) {
+        } else if (g_widgetHover.load() == 2) {
             alpha = (BYTE)(alpha < 140 ? 140 : alpha);
             thickness = (REAL)(2.0 * scale);
         }
@@ -852,7 +861,7 @@ static void DrawDetailsPanel(HDC hdc, int width, int height, HWND hwnd) {
     AddRoundedRect(buttonPath, (REAL)button.left, (REAL)button.top,
                    (REAL)(button.right - button.left),
                    (REAL)(button.bottom - button.top), (REAL)(6.0 * scale));
-    bool hoverReset = g_hoverState.load() == 2;
+    bool hoverReset = g_panelHover.load() == 1;
     SolidBrush buttonBrush(BlendColor(textColor, hoverReset ? 56 : 30));
     graphics.FillPath(&buttonBrush, &buttonPath);
     Pen buttonPen(BlendColor(textColor, hoverReset ? 110 : 70), (REAL)(1.0 * scale));

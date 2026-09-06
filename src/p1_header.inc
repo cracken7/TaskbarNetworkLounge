@@ -2,13 +2,13 @@
 // @id              taskbar-network-lounge
 // @name            Taskbar Network Lounge
 // @description     Live network speed and traffic totals on the taskbar, in a native acrylic widget
-// @version         1.1.1
+// @version         1.2.0
 // @author          cracken7
 // @github          https://github.com/cracken7
 // @homepage        https://github.com/cracken7/TaskbarNetworkLounge
 // @include         explorer.exe
 // @license         MIT
-// @compilerOptions -lole32 -ldwmapi -lgdi32 -luser32 -lshcore -lgdiplus -lshell32 -lcomctl32 -liphlpapi -lws2_32
+// @compilerOptions -lole32 -ldwmapi -lgdi32 -luser32 -lgdiplus -lshell32 -lcomctl32 -liphlpapi -lws2_32
 // @name:ar         مؤشر الشبكة لشريط المهام
 // @description:ar  سرعة الشبكة الحيّة وإجمالي الترافيك على شريط المهام في ودجت أصلية بمظهر زجاجي
 // ==/WindhawkMod==
@@ -63,6 +63,10 @@ Taskbar Settings → Widgets.
 
 ## Notes
 
+* The widget runs in a dedicated `explorer.exe` helper process (Windhawk's
+  "mods as tools" pattern), so a fault in it cannot take down the real shell. Two
+  visible consequences: a second "Windows Explorer" entry appears in Task Manager,
+  and other mods that target `explorer.exe` are injected into the helper too.
 * Attaches to the primary taskbar (`Shell_TrayWnd`).
 * Speeds are sampled, so a single reading can differ from Task Manager by a few
   percent; the average over a second matches (measured 0.06 % over 22 s).
@@ -110,6 +114,10 @@ Taskbar Settings → Widgets.
 
 ## ملاحظات
 
+* يعمل الودجت في عملية `explorer.exe` مساعدة مخصّصة (نمط "المودات كأدوات" في
+  Windhawk)، فلا يستطيع أي خطأ فيه إسقاط الشل الحقيقي. ولهذا أثران ظاهران: يظهر
+  سطر ثانٍ باسم "Windows Explorer" في مدير المهام، وأي مود آخر يستهدف
+  `explorer.exe` يُحمَّل في العملية المساعدة أيضًا.
 * يرتبط بشريط المهام الأساسي (`Shell_TrayWnd`).
 * السرعات تُقاس بالتقطيع الزمني، فقراءة واحدة قد تختلف عن مدير المهام بنسبة قليلة،
   لكن المتوسط خلال ثانية مطابق (المقيس: فرق 0.06% خلال 22 ثانية).
@@ -138,11 +146,6 @@ Taskbar Settings → Widgets.
     $description: 13 is the sharpest default (measured); 11-12 for a smaller widget.
     $name:ar: حجم الخط
     $description:ar: 13 هو الأوضح (بالقياس الفعلي)؛ 11-12 لودجت أصغر.
-  - BoldText: true
-    $name: Bold text
-    $description: Bold is much sharper at small sizes. Off = regular weight.
-    $name:ar: خط عريض
-    $description:ar: العريض أوضح بكثير في المقاسات الصغيرة. إيقاف = وزن عادي.
   - TextWeight: bold
     $name: Text weight
     $options:
@@ -235,7 +238,7 @@ Taskbar Settings → Widgets.
     $description: Follow the Windows light/dark theme.
     $name:ar: الثيم التلقائي
     $description:ar: يتبع ثيم ويندوز الفاتح/الغامق.
-  - TextColor: 0xFFFFFF
+  - TextColor: "0xFFFFFF"
     $name: Manual text color (hex)
     $description: Used only when Auto theme is off.
     $name:ar: لون النص اليدوي (hex)

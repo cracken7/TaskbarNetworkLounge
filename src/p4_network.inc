@@ -308,7 +308,7 @@ class NetworkMonitor {
             L"tunnel",      L"vpn",         L"zerotier",   L"tailscale",
             L"nordlynx",    L"proton",      L"expressvpn", L"hamachi",
             L"radmin",      L"pseudo",      L"teredo",     L"isatap",
-            L"6to4",        L"npcap",       L"wan minipor", L"bluetooth",
+            L"6to4",        L"npcap",       L"wan miniport", L"bluetooth",
             L"virtual",
         };
         for (const wchar_t* marker : kVirtualMarkers) {
@@ -574,17 +574,22 @@ class NetworkMonitor {
     }
 
     bool SnapshotDiffers(const NetSnapshot& snapshot) const {
-        auto differsBy = [](double a, double b) {
-            double diff = a > b ? a - b : b - a;
-            double scale = a > b ? a : b;
-            return diff > 512.0 || diff > scale * 0.01;
-        };
-        return differsBy(snapshot.downBytesPerSec,
-                         m_lastPublished.downBytesPerSec) ||
-               differsBy(snapshot.upBytesPerSec, m_lastPublished.upBytesPerSec) ||
-               snapshot.totalDown != m_lastPublished.totalDown ||
-               snapshot.totalUp != m_lastPublished.totalUp ||
-               snapshot.connected != m_lastPublished.connected ||
+        // Compare what is actually drawn: the formatted strings carry 2-3
+        // significant digits, so a sub-digit wobble in the raw rate no longer
+        // forces a repaint. A numeric threshold could not do this - any absolute
+        // or relative epsilon still fires on changes the user cannot see.
+        ModSettings s = GetSettings();
+        if (FormatSpeed(snapshot.downBytesPerSec, s) !=
+                FormatSpeed(m_lastPublished.downBytesPerSec, s) ||
+            FormatSpeed(snapshot.upBytesPerSec, s) !=
+                FormatSpeed(m_lastPublished.upBytesPerSec, s) ||
+            FormatBytes(snapshot.totalDown, s) !=
+                FormatBytes(m_lastPublished.totalDown, s) ||
+            FormatBytes(snapshot.totalUp, s) !=
+                FormatBytes(m_lastPublished.totalUp, s)) {
+            return true;
+        }
+        return snapshot.connected != m_lastPublished.connected ||
                snapshot.ifName != m_lastPublished.ifName ||
                snapshot.ipv4 != m_lastPublished.ipv4;
     }
@@ -618,11 +623,8 @@ class NetworkMonitor {
     // on unload / reset.
     void FlushTotals(bool force) {
         ModSettings s = GetSettings();
-        if (s.counterMode != CounterMode::Persistent && !force) {
-            return;
-        }
-        if (s.counterMode != CounterMode::Persistent && force) {
-            return;  // session mode never touches the file
+        if (s.counterMode != CounterMode::Persistent) {
+            return;  // session mode never touches storage
         }
 
         ULONGLONG now = GetTickCount64();

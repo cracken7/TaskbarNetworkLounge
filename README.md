@@ -30,7 +30,7 @@ troubleshooting: **[INSTALL.md](INSTALL.md)**.
 | | |
 | --- | --- |
 | **Live speed** | Download and upload, read from the real interface counters (`GetIfTable2`, IP Helper) divided by measured elapsed time (`QueryPerformanceCounter`). No `ipconfig`, `netstat` or PowerShell parsing. |
-| **Traffic totals** | Per session, or persistent across Explorer/Windhawk/Windows restarts via a small checksummed file in `%LOCALAPPDATA%`. |
+| **Traffic totals** | Per session, or persistent across Explorer/Windhawk/Windows restarts, kept in Windhawk's own per-mod storage so nothing is left behind when the mod is removed. |
 | **VPN-aware** | Tracks the single adapter holding the default route, so a VPN is followed while it carries the internet — never counted on top of its carrier. Totals reset when the source changes. |
 | **Adjustable look** | 5 arrow styles, 4 text weights, font/arrow/widget/panel sizes, colours, acrylic tint, three layouts. |
 | **Draggable divider** | Grab the line between the SPEED and TOTAL columns and move it — only the line moves, the text stays put. |
@@ -130,7 +130,7 @@ Windhawk requires; `install.py` writes it into Windhawk and restarts the engine.
 
 ```bash
 bash build.sh              # regenerate the .wh.cpp and compile a test DLL
-bash tests/run_all.sh      # all seven offline suites
+bash tests/run_all.sh      # all eight offline suites
 python install.py          # install into Windhawk and restart the engine
 python tools/setopt.py --show
 ```
@@ -165,6 +165,9 @@ contrast shadow, and `GenericTypographic` string formatting — the default adds
 
 ## Known limitations
 
+- The widget runs in a dedicated `explorer.exe` helper process, so Task Manager
+  shows a second "Windows Explorer" entry, and other mods targeting `explorer.exe`
+  are injected into the helper as well.
 - Attaches to the **primary** taskbar (`Shell_TrayWnd`); secondary taskbars are a
   fallback only.
 - A vertical taskbar is handled in code but only verified offline.

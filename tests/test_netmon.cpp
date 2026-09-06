@@ -76,6 +76,25 @@ static BOOL Wh_SetIntValue(const wchar_t* name, int value) {
     return TRUE;
 }
 
+// Mod-local binary storage (used by the persistent traffic totals).
+static std::map<std::wstring, std::string> g_binaryStorage;
+
+[[maybe_unused]] static size_t Wh_GetBinaryValue(const wchar_t* name, void* buffer,
+                                                size_t size) {
+    auto it = g_binaryStorage.find(name);
+    if (it == g_binaryStorage.end() || it->second.size() != size) {
+        return 0;
+    }
+    memcpy(buffer, it->second.data(), size);
+    return size;
+}
+
+[[maybe_unused]] static BOOL Wh_SetBinaryValue(const wchar_t* name,
+                                               const void* buffer, size_t size) {
+    g_binaryStorage[name] = std::string((const char*)buffer, size);
+    return TRUE;
+}
+
 // ---- Mod sources under test ----------------------------------------------
 #include "../src/p2_core.inc"
 #include "../src/p3_settings.inc"
@@ -183,27 +202,27 @@ static void TestPersistence() {
     bool saved = SavePersistentTotals(write);
     PersistentTotals read;
     bool loaded = LoadPersistentTotals(&read);
-    wprintf(L"  file: %s\n", GetStorageFile().c_str());
     wprintf(L"  save=%d load=%d down=%llu up=%llu %s\n", saved ? 1 : 0,
             loaded ? 1 : 0, read.down, read.up,
             (saved && loaded && read.down == write.down && read.up == write.up)
                 ? L"OK"
                 : L"MISMATCH");
 
-    // Corruption safety: a truncated/garbage file must be rejected, not crash.
-    std::wstring path = GetStorageFile();
-    HANDLE file = CreateFileW(path.c_str(), GENERIC_WRITE, 0, nullptr,
-                              CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (file != INVALID_HANDLE_VALUE) {
-        const char garbage[] = "TNLv1 not-a-number\n";
-        DWORD written = 0;
-        WriteFile(file, garbage, (DWORD)strlen(garbage), &written, nullptr);
-        CloseHandle(file);
-    }
-    PersistentTotals corrupt{42, 42};
-    bool rejected = !LoadPersistentTotals(&corrupt);
-    wprintf(L"  corrupt file rejected: %s\n", rejected ? L"OK" : L"FAILED");
-    DeleteFileW(path.c_str());
+    // A short/absent value must be rejected rather than yielding half a number.
+    // Totals live in Windhawk's per-mod storage, so the stub's binary store is
+    // what gets truncated here.
+    unsigned long long half = 7;
+    Wh_SetBinaryValue(L"TrafficTotals", &half, sizeof(half));
+    PersistentTotals truncated{42, 42};
+    bool rejectedShort = !LoadPersistentTotals(&truncated);
+    wprintf(L"  short value rejected: %s (down=%llu up=%llu)\n",
+            rejectedShort ? L"OK" : L"FAILED", truncated.down, truncated.up);
+
+    g_binaryStorage.erase(L"TrafficTotals");
+    PersistentTotals missing{42, 42};
+    bool rejectedMissing = !LoadPersistentTotals(&missing);
+    wprintf(L"  missing value rejected: %s\n",
+            rejectedMissing ? L"OK" : L"FAILED");
 }
 
 int main(int argc, char** argv) {

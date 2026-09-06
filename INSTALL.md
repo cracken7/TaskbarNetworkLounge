@@ -34,8 +34,9 @@ Arabic.
 Windhawk → Mods → *Taskbar Network Lounge* → **Remove**. To keep the mod but hide
 the widget, turn off *Behavior → Start enabled*.
 
-Persistent traffic totals live in
-`%LOCALAPPDATA%\TaskbarNetworkLounge\traffic.dat`; delete the folder to clear them.
+Persistent traffic totals live in Windhawk's per-mod storage, so removing the mod
+removes them too. To zero them while keeping the mod, use *Reset traffic counters*
+in the settings, the Reset button in the details panel, or the right-click menu.
 
 ## Troubleshooting
 
@@ -66,7 +67,7 @@ Requires Windhawk (for its bundled clang) and Python 3 with `pyyaml`.
 git clone https://github.com/cracken7/TaskbarNetworkLounge
 cd TaskbarNetworkLounge
 bash build.sh              # concatenates src/p1..p7.inc, compiles a test DLL
-bash tests/run_all.sh      # all seven offline suites
+bash tests/run_all.sh      # all eight offline suites
 python install.py          # write into Windhawk and restart the engine
 ```
 
@@ -105,8 +106,9 @@ Windhawk ← **Mods** ← *Taskbar Network Lounge* ← **Settings**. والإع�
 Windhawk ← Mods ← *Taskbar Network Lounge* ← **Remove**. ولو أردت الإبقاء على المود
 مع إخفاء الودجت، أوقِف *Behavior ← Start enabled*.
 
-الإجماليات الدائمة محفوظة في
-`%LOCALAPPDATA%\TaskbarNetworkLounge\traffic.dat`، فاحذف المجلد لتصفيرها.
+الإجماليات الدائمة محفوظة في مخزن Windhawk الخاص بالمود، فإزالة المود تزيلها معه.
+ولتصفيرها مع الإبقاء على المود استخدم *Reset traffic counters* في الإعدادات، أو زر
+التصفير في لوحة التفاصيل، أو قائمة كليك يمين.
 
 ## حلّ المشاكل
 
@@ -138,6 +140,6 @@ Windhawk ← Mods ← *Taskbar Network Lounge* ← **Remove**. ولو أردت �
 git clone https://github.com/cracken7/TaskbarNetworkLounge
 cd TaskbarNetworkLounge
 bash build.sh              # يدمج src/p1..p7.inc ويبني DLL للاختبار
-bash tests/run_all.sh      # كل مجموعات الاختبار السبع
+bash tests/run_all.sh      # كل مجموعات الاختبار الثماني
 python install.py          # الكتابة في Windhawk وإعادة تشغيل المحرّك
 ```

@@ -191,14 +191,20 @@ static bool IsTaskbarWindow(HWND hwnd) {
            wcscmp(className, L"Shell_SecondaryTrayWnd") == 0;
 }
 
+// EVENT_OBJECT_LOCATIONCHANGE fires very often on the taskbar thread, so the cheap
+// checks come first: the hooked window itself and the window object. Only then is
+// the cross-process GetClassNameW inside IsTaskbarWindow worth paying for.
 static void CALLBACK TaskbarEventProc(HWINEVENTHOOK,
                                       DWORD,
                                       HWND hwnd,
-                                      LONG,
+                                      LONG idObject,
                                       LONG,
                                       DWORD,
                                       DWORD) {
-    if (!IsTaskbarWindow(hwnd) || !g_hWidget) {
+    if (!g_hWidget || idObject != OBJID_WINDOW) {
+        return;
+    }
+    if (hwnd != g_hookedTaskbar && !IsTaskbarWindow(hwnd)) {
         return;
     }
     PostMessage(g_hWidget, APP_WM_REPOSITION, 0, 0);
@@ -338,6 +344,7 @@ static LRESULT CALLBACK PanelWndProc(HWND hwnd,
 
         case WM_ACTIVATE:
             if (LOWORD(wParam) == WA_INACTIVE) {
+                KillTimer(hwnd, IDT_PANEL_DISMISS);
                 ShowWindow(hwnd, SW_HIDE);
                 g_panelVisible = false;
                 // Clicking the widget while the panel is open deactivates the
@@ -347,13 +354,45 @@ static LRESULT CALLBACK PanelWndProc(HWND hwnd,
             }
             return 0;
 
+        case WM_TIMER:
+            if (wParam == IDT_PANEL_DISMISS) {
+                // Dismiss on a mouse-down anywhere outside the panel and outside
+                // the widget (the widget's own click toggles the panel itself).
+                // This is the path that actually runs, because a background
+                // process is normally refused foreground activation.
+                if (!g_panelVisible.load()) {
+                    KillTimer(hwnd, IDT_PANEL_DISMISS);
+                    return 0;
+                }
+                if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) == 0 &&
+                    (GetAsyncKeyState(VK_RBUTTON) & 0x8000) == 0) {
+                    return 0;
+                }
+                POINT cursor{};
+                GetCursorPos(&cursor);
+                RECT panelRect{}, widgetRect{};
+                GetWindowRect(hwnd, &panelRect);
+                if (PtInRect(&panelRect, cursor)) {
+                    return 0;
+                }
+                if (g_hWidget && GetWindowRect(g_hWidget, &widgetRect) &&
+                    PtInRect(&widgetRect, cursor)) {
+                    return 0;
+                }
+                KillTimer(hwnd, IDT_PANEL_DISMISS);
+                ShowWindow(hwnd, SW_HIDE);
+                g_panelVisible = false;
+                g_panelHiddenAt = GetTickCount64();
+            }
+            return 0;
+
         case WM_MOUSEMOVE: {
             double scale = GetScaleForWindow(hwnd);
             PanelMetrics metrics = ComputePanelMetrics(scale);
             POINT point{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
-            int newState = PtInRect(&metrics.resetButton, point) ? 2 : 0;
-            if (newState != g_hoverState.load()) {
-                g_hoverState = newState;
+            int newState = PtInRect(&metrics.resetButton, point) ? 1 : 0;
+            if (newState != g_panelHover.load()) {
+                g_panelHover = newState;
                 InvalidateRect(hwnd, nullptr, FALSE);
             }
             TRACKMOUSEEVENT track{sizeof(TRACKMOUSEEVENT), TME_LEAVE, hwnd, 0};
@@ -362,8 +401,8 @@ static LRESULT CALLBACK PanelWndProc(HWND hwnd,
         }
 
         case WM_MOUSELEAVE:
-            if (g_hoverState.load() == 2) {
-                g_hoverState = 0;
+            if (g_panelHover.load() != 0) {
+                g_panelHover = 0;
                 InvalidateRect(hwnd, nullptr, FALSE);
             }
             return 0;
@@ -427,6 +466,7 @@ static void TogglePanel(HWND widget) {
     }
 
     if (g_panelVisible.load()) {
+        KillTimer(g_hPanel, IDT_PANEL_DISMISS);
         ShowWindow(g_hPanel, SW_HIDE);
         g_panelVisible = false;
         g_panelHiddenAt = GetTickCount64();
@@ -492,7 +532,11 @@ static void TogglePanel(HWND widget) {
                  SWP_SHOWWINDOW | SWP_NOACTIVATE);
     g_panelVisible = true;
     InvalidateRect(g_hPanel, nullptr, TRUE);
-    SetForegroundWindow(g_hPanel);  // so WM_ACTIVATE can dismiss it
+    // Try for activation (it makes WM_ACTIVATE dismissal work when it succeeds),
+    // but do not depend on it: SetForegroundWindow is normally refused for a
+    // background process, so a timer polls the mouse as the reliable path.
+    SetForegroundWindow(g_hPanel);
+    SetTimer(g_hPanel, IDT_PANEL_DISMISS, 120, nullptr);
 }
 
 // --- Divider drag hit testing ----------------------------------------------
@@ -563,6 +607,10 @@ static void ShowContextMenu(HWND hwnd) {
     UINT command = TrackPopupMenu(menu,
                                   TPM_RIGHTBUTTON | TPM_RETURNCMD | TPM_NONOTIFY,
                                   cursor.x, cursor.y, 0, hwnd, nullptr);
+    // The classic TrackPopupMenu fix: SetForegroundWindow may be refused on a
+    // WS_EX_NOACTIVATE window, and the menu then lingers after a click elsewhere.
+    // A dummy message to the owner nudges it out of menu mode.
+    PostMessage(hwnd, WM_NULL, 0, 0);
     DestroyMenu(menu);
 
     switch (command) {
@@ -592,9 +640,12 @@ static void ShowContextMenu(HWND hwnd) {
                           nullptr, SW_SHOWNORMAL);
             break;
         case IDM_WH_SETTINGS: {
+            // The helper process is an explorer.exe image, so
+            // GetModuleFileNameW(nullptr, ...) would return explorer.exe and just
+            // open a File Explorer window. Resolve Windhawk's own path instead.
             WCHAR path[MAX_PATH];
-            if (GetModuleFileNameW(nullptr, path, ARRAYSIZE(path)) &&
-                GetModuleFileNameW(nullptr, path, ARRAYSIZE(path)) < MAX_PATH) {
+            if (ExpandEnvironmentStringsW(L"%ProgramFiles%\\Windhawk\\windhawk.exe",
+                                          path, ARRAYSIZE(path))) {
                 ShellExecuteW(nullptr, L"open", path, nullptr, nullptr,
                               SW_SHOWNORMAL);
             }

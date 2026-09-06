@@ -35,6 +35,7 @@ static LRESULT CALLBACK WidgetWndProc(HWND hwnd,
         case WM_SETTINGCHANGE:
         case WM_THEMECHANGED:
         case WM_DWMCOMPOSITIONCHANGED:
+        case APP_WM_SETTINGS_CHANGED:
             UpdateAppearance(hwnd);
             InvalidateRect(hwnd, nullptr, TRUE);
             if (g_hPanel) {
@@ -97,9 +98,9 @@ static LRESULT CALLBACK WidgetWndProc(HWND hwnd,
                 return 0;
             }
 
-            const int state = DividerHover(hwnd, mouseX, settings) ? 3 : 1;
-            if (g_hoverState.load() != state) {
-                g_hoverState = state;
+            const int state = DividerHover(hwnd, mouseX, settings) ? 2 : 1;
+            if (g_widgetHover.load() != state) {
+                g_widgetHover = state;
                 InvalidateRect(hwnd, nullptr, FALSE);
             }
             TRACKMOUSEEVENT track{sizeof(TRACKMOUSEEVENT), TME_LEAVE, hwnd, 0};
@@ -111,15 +112,15 @@ static LRESULT CALLBACK WidgetWndProc(HWND hwnd,
             // A west-east cursor over the grab zone is the only affordance that
             // says "this line can be dragged".
             if (LOWORD(lParam) == HTCLIENT &&
-                (g_dividerDragging.load() || g_hoverState.load() == 3)) {
+                (g_dividerDragging.load() || g_widgetHover.load() == 2)) {
                 SetCursor(LoadCursorW(nullptr, IDC_SIZEWE));
                 return TRUE;
             }
             break;
 
         case WM_MOUSELEAVE:
-            if (g_hoverState.load() != 0 && !g_dividerDragging.load()) {
-                g_hoverState = 0;
+            if (g_widgetHover.load() != 0 && !g_dividerDragging.load()) {
+                g_widgetHover = 0;
                 InvalidateRect(hwnd, nullptr, FALSE);
             }
             return 0;
@@ -194,6 +195,10 @@ static LRESULT CALLBACK WidgetWndProc(HWND hwnd,
 // Owns both windows, the GDI+ token and the message loop. All window handling
 // happens here; the network worker only posts messages.
 static void UiThread() {
+    // Publish the thread id first: shutdown posts WM_QUIT here, and it must work
+    // even if the mod is torn down before any window exists.
+    g_uiThreadId = GetCurrentThreadId();
+
     // Per-monitor DPI so GetDpiForWindow reports the real monitor scaling.
     HMODULE user32 = GetModuleHandleW(L"user32.dll");
     if (user32) {
@@ -308,13 +313,20 @@ static void UiThread() {
         DispatchMessageW(&msg);
     }
 
-    // Ordered teardown: panel, tooltip, widget, classes, GDI+, COM.
+    // Ordered teardown: panel, tooltip, widget, classes, GDI+, COM. The widget is
+    // destroyed explicitly because the loop can also exit via WM_QUIT (see
+    // WhTool_ModUninit), in which case WM_DESTROY never ran - and a surviving
+    // window keeps its timer and WinEvent hook alive and makes UnregisterClassW
+    // fail.
     if (g_hPanel) {
         DestroyWindow(g_hPanel);
         g_hPanel = nullptr;
     }
     DestroyTooltip();
-    g_hWidget = nullptr;
+    if (g_hWidget) {
+        DestroyWindow(g_hWidget);
+        g_hWidget = nullptr;
+    }
 
     UnregisterClassW(kPanelClass, instance);
     UnregisterClassW(kWidgetClass, instance);
@@ -354,8 +366,6 @@ BOOL WhTool_ModInit() {
         return FALSE;
     }
 
-    g_running = true;
-
     try {
         g_uiThread = new std::thread(UiThread);
         g_workerThread = new std::thread(NetworkWorkerThread);
@@ -369,8 +379,6 @@ BOOL WhTool_ModInit() {
 
 void WhTool_ModUninit() {
     Wh_Log(L"Taskbar Network Lounge stopping");
-    g_running = false;
-
     if (g_stopEvent) {
         SetEvent(g_stopEvent);
     }
@@ -386,8 +394,14 @@ void WhTool_ModUninit() {
         g_workerThread = nullptr;
     }
 
-    if (g_hWidget) {
-        PostMessage(g_hWidget, APP_WM_CLOSE, 0, 0);
+    // End the UI thread's message loop. WM_QUIT goes to the THREAD rather than to
+    // the widget: if uninit runs before UiThread created its window (mod disabled
+    // or reloaded immediately after start) a window-targeted message would be
+    // dropped and the join() below would block forever. The loop may also have
+    // exited already; PostThreadMessageW simply fails then, which is harmless.
+    DWORD uiThreadId = g_uiThreadId.load();
+    if (uiThreadId != 0) {
+        PostThreadMessageW(uiThreadId, WM_QUIT, 0, 0);
     }
 
     if (g_uiThread) {
@@ -397,6 +411,7 @@ void WhTool_ModUninit() {
         delete g_uiThread;
         g_uiThread = nullptr;
     }
+    g_uiThreadId = 0;
 
     if (g_stopEvent) {
         CloseHandle(g_stopEvent);
@@ -418,7 +433,7 @@ void WhTool_ModSettingsChanged() {
     }
 
     if (g_hWidget) {
-        PostMessage(g_hWidget, WM_SETTINGCHANGE, 0, 0);
+        PostMessage(g_hWidget, APP_WM_SETTINGS_CHANGED, 0, 0);
         PostMessage(g_hWidget, APP_WM_REPOSITION, 0, 0);
         PostMessage(g_hWidget, APP_WM_DATA_UPDATED, 0, 0);
     }

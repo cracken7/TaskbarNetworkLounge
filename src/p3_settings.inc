@@ -35,7 +35,6 @@ static void LoadSettings() {
     s.width = ClampInt(Wh_GetIntSetting(L"Appearance.PanelWidth"), 80, 1200);
     s.height = ClampInt(Wh_GetIntSetting(L"Appearance.PanelHeight"), 20, 200);
     s.fontSize = ClampInt(Wh_GetIntSetting(L"Appearance.FontSize"), 6, 40);
-    s.boldText = Wh_GetIntSetting(L"Appearance.BoldText") != 0;
 
     std::wstring weight = ReadStringSetting(L"Appearance.TextWeight");
     if (StringSettingIs(weight, L"black")) {
@@ -46,10 +45,6 @@ static void LoadSettings() {
         s.textWeight = TextWeight::Regular;
     } else {
         s.textWeight = TextWeight::Bold;
-    }
-    // BoldText=false still forces regular, so the old switch keeps working.
-    if (!s.boldText) {
-        s.textWeight = TextWeight::Regular;
     }
 
     std::wstring arrow = ReadStringSetting(L"Appearance.ArrowStyle");
@@ -303,128 +298,25 @@ static std::wstring FormatBytes(unsigned long long bytes, const ModSettings& s) 
 }
 
 // --- Persistent traffic counters ------------------------------------------
-// Stored as a tiny text file in %LOCALAPPDATA%\TaskbarNetworkLounge so that it
-// survives Explorer / Windhawk / Windows restarts. Writes are batched (every 30
-// seconds and on unload) and atomic (temp file + MoveFileEx).
+// Stored in Windhawk's per-mod storage so the totals survive Explorer / Windhawk
+// / Windows restarts and disappear with the mod - a mod's own state does not
+// belong in a directory that outlives its uninstall. Writes are batched (every 30
+// seconds and on unload).
 struct PersistentTotals {
     unsigned long long down = 0;
     unsigned long long up = 0;
 };
 
-static std::wstring GetStorageDir() {
-    std::wstring dir;
-    WCHAR buffer[MAX_PATH];
-    DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", buffer,
-                                          ARRAYSIZE(buffer));
-    if (length > 0 && length < ARRAYSIZE(buffer)) {
-        dir = buffer;
-    } else if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr,
-                                          0, buffer))) {
-        dir = buffer;
-    }
-
-    if (dir.empty()) {
-        return dir;
-    }
-
-    if (dir.back() != L'\\') {
-        dir += L'\\';
-    }
-    dir += kStorageDirName;
-    return dir;
-}
-
-static std::wstring GetStorageFile() {
-    std::wstring dir = GetStorageDir();
-    if (dir.empty()) {
-        return dir;
-    }
-    return dir + L"\\" + kStorageFileName;
-}
-
 static bool LoadPersistentTotals(PersistentTotals* out) {
-    std::wstring path = GetStorageFile();
-    if (path.empty()) {
+    PersistentTotals stored;
+    size_t read = Wh_GetBinaryValue(L"TrafficTotals", &stored, sizeof(stored));
+    if (read != sizeof(stored)) {
         return false;
     }
-
-    HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ,
-                              nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,
-                              nullptr);
-    if (file == INVALID_HANDLE_VALUE) {
-        return false;
-    }
-
-    char buffer[256] = {};
-    DWORD read = 0;
-    BOOL ok = ReadFile(file, buffer, sizeof(buffer) - 1, &read, nullptr);
-    CloseHandle(file);
-    if (!ok || read == 0) {
-        return false;
-    }
-    buffer[read] = '\0';
-
-    unsigned long long down = 0, up = 0, checksum = 0;
-    int version = 0;
-    // Format: "TNLv<version> <down> <up> <checksum>"
-    if (sscanf(buffer, "TNLv%d %llu %llu %llu", &version, &down, &up,
-               &checksum) != 4) {
-        Wh_Log(L"Traffic counter file is corrupt, ignoring it");
-        return false;
-    }
-    if (version != 1 || checksum != (down ^ up ^ 0x5A5AA5A5ULL)) {
-        Wh_Log(L"Traffic counter file failed validation, ignoring it");
-        return false;
-    }
-
-    out->down = down;
-    out->up = up;
+    *out = stored;
     return true;
 }
 
 static bool SavePersistentTotals(const PersistentTotals& totals) {
-    std::wstring dir = GetStorageDir();
-    std::wstring path = GetStorageFile();
-    if (dir.empty() || path.empty()) {
-        return false;
-    }
-
-    CreateDirectoryW(dir.c_str(), nullptr);
-
-    std::wstring tempPath = path + L".tmp";
-    HANDLE file = CreateFileW(tempPath.c_str(), GENERIC_WRITE, 0, nullptr,
-                              CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (file == INVALID_HANDLE_VALUE) {
-        return false;
-    }
-
-    char buffer[256];
-    int length = _snprintf_s(buffer, sizeof(buffer), _TRUNCATE,
-                             "TNLv1 %llu %llu %llu\n", totals.down, totals.up,
-                             totals.down ^ totals.up ^ 0x5A5AA5A5ULL);
-    if (length <= 0) {
-        CloseHandle(file);
-        DeleteFileW(tempPath.c_str());
-        return false;
-    }
-
-    DWORD written = 0;
-    BOOL ok = WriteFile(file, buffer, (DWORD)length, &written, nullptr) &&
-              written == (DWORD)length;
-    if (ok) {
-        FlushFileBuffers(file);
-    }
-    CloseHandle(file);
-
-    if (!ok) {
-        DeleteFileW(tempPath.c_str());
-        return false;
-    }
-
-    if (!MoveFileExW(tempPath.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING |
-                                                        MOVEFILE_WRITE_THROUGH)) {
-        DeleteFileW(tempPath.c_str());
-        return false;
-    }
-    return true;
+    return Wh_SetBinaryValue(L"TrafficTotals", &totals, sizeof(totals)) != FALSE;
 }
