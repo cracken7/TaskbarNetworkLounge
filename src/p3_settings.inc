@@ -68,6 +68,17 @@ static void LoadSettings() {
     s.arrowScale = ClampInt(Wh_GetIntSetting(L"Appearance.ArrowScale"), 60, 400);
     s.showColumnLabels = Wh_GetIntSetting(L"Appearance.ShowColumnLabels") != 0;
     s.dividerPos = ClampInt(Wh_GetIntSetting(L"Appearance.DividerPos"), 20, 80);
+    // The dragged offset lives in the mod's own storage, not in the settings YAML:
+    // Windhawk's settings UI has no draggable control, and writing a setting from
+    // the mod would fight the UI. The live value is in g_dividerOffset; this read
+    // only seeds it once so a drag survives a restart.
+    s.dividerDraggable =
+        Wh_GetIntSetting(L"Appearance.DividerDraggable") != 0;
+    if (!s.dividerDraggable) {
+        g_dividerOffset = 0;  // going back to a fixed divider discards the drag
+        Wh_SetIntValue(L"DividerOffset", 0);
+    }
+    s.dividerOffset = g_dividerOffset.load();
     s.dividerOpacity =
         ClampInt(Wh_GetIntSetting(L"Appearance.DividerOpacity"), 0, 255);
     s.detailsWidth = ClampInt(Wh_GetIntSetting(L"Appearance.DetailsWidth"), 140, 900);
@@ -126,6 +137,8 @@ static void LoadSettings() {
 
     s.selectedInterface = ReadStringSetting(L"Network.SelectedInterface");
     s.excludeVirtual = Wh_GetIntSetting(L"Network.ExcludeVirtual") != 0;
+    s.resetOnSourceChange =
+        Wh_GetIntSetting(L"Network.ResetOnSourceChange") != 0;
     s.updateInterval = ClampInt(Wh_GetIntSetting(L"Network.UpdateInterval"), 250, 5000);
 
     std::wstring unit = ReadStringSetting(L"Network.SpeedUnit");

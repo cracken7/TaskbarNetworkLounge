@@ -495,6 +495,38 @@ static void TogglePanel(HWND widget) {
     SetForegroundWindow(g_hPanel);  // so WM_ACTIVATE can dismiss it
 }
 
+// --- Divider drag hit testing ----------------------------------------------
+// The base x is the un-nudged split point: it must be computed the same way the
+// painter does, so a drag offset of 0 leaves the line exactly where the layout
+// puts it.
+static REAL DividerBaseX(HWND hwnd, int width) {
+    ModSettings s = GetSettings();
+    const double scale = GetScaleForWindow(hwnd);
+    REAL padding = (REAL)(9.0 * scale);
+    REAL columnGap = (REAL)(10.0 * scale);
+    REAL usable = (REAL)width - padding * 2.0f - columnGap;
+    REAL leftWidth = usable * (s.dividerPos / 100.0f);
+    return padding + leftWidth + columnGap / 2.0f;
+}
+
+// True when the pointer is within the grab zone of the line that was last
+// painted. Uses the painted x (published by the renderer) rather than
+// recomputing it, so hover can never disagree with what is on screen.
+static bool DividerHover(HWND hwnd, int mouseX, const ModSettings& s) {
+    if (!s.dividerDraggable || s.layout != LayoutMode::Full) {
+        return false;
+    }
+    float painted = g_dividerHitX.load();
+    if (painted < 0.0f) {
+        return false;  // no divider on screen (other layout / not painted yet)
+    }
+    const double scale = GetScaleForWindow(hwnd);
+    // 5 logical px each side: wide enough to grab without stealing the click
+    // that opens the details panel.
+    const float slack = (float)(5.0 * scale);
+    return mouseX >= painted - slack && mouseX <= painted + slack;
+}
+
 // --- Context menu ----------------------------------------------------------
 static void ShowContextMenu(HWND hwnd) {
     HMENU menu = CreatePopupMenu();
@@ -508,6 +540,17 @@ static void ShowContextMenu(HWND hwnd) {
     AppendMenuW(menu, MF_STRING, IDM_RESET_DL, L"Reset download");
     AppendMenuW(menu, MF_STRING, IDM_RESET_UL, L"Reset upload");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    {
+        ModSettings s = GetSettings();
+        // Only offered when there is something to undo, so the menu does not grow
+        // an item that does nothing.
+        if (s.dividerDraggable && s.layout == LayoutMode::Full &&
+            g_dividerOffset.load() != 0) {
+            AppendMenuW(menu, MF_STRING, IDM_RESET_DIVIDER,
+                        L"Reset divider position");
+            AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+        }
+    }
     AppendMenuW(menu, MF_STRING, IDM_NET_SETTINGS, L"Open Network Settings");
     AppendMenuW(menu, MF_STRING, IDM_WH_SETTINGS, L"Windhawk Settings");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
@@ -537,6 +580,12 @@ static void ShowContextMenu(HWND hwnd) {
             break;
         case IDM_RESET_BOTH:
             RequestReset(true, true);
+            break;
+        case IDM_RESET_DIVIDER:
+            g_dividerOffset = 0;
+            Wh_SetIntValue(L"DividerOffset", 0);
+            LoadSettings();
+            InvalidateRect(hwnd, nullptr, FALSE);
             break;
         case IDM_NET_SETTINGS:
             ShellExecuteW(nullptr, L"open", L"ms-settings:network", nullptr,

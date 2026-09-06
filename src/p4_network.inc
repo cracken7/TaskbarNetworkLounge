@@ -99,7 +99,9 @@ class NetworkMonitor {
         m_loggedTableFailure = false;
 
         std::vector<InterfaceCandidate> candidates;
+        std::vector<InterfaceCandidate> allCandidates;
         candidates.reserve(table->NumEntries);
+        allCandidates.reserve(table->NumEntries);
 
         for (ULONG i = 0; i < table->NumEntries; i++) {
             const MIB_IF_ROW2& row = table->Table[i];
@@ -118,6 +120,13 @@ class NetworkMonitor {
                 row.InterfaceAndOperStatusFlags.HardwareInterface &&
                 !row.InterfaceAndOperStatusFlags.FilterInterface;
 
+            // Loopback and NDIS filter pseudo-interfaces are never useful, not
+            // even as a default-route target.
+            if (row.Type != IF_TYPE_SOFTWARE_LOOPBACK &&
+                !row.InterfaceAndOperStatusFlags.FilterInterface) {
+                allCandidates.push_back(candidate);
+            }
+
             if (!IsUsableInterface(row, s)) {
                 continue;
             }
@@ -126,7 +135,32 @@ class NetworkMonitor {
 
         FreeMibTable(table);
 
-        std::vector<InterfaceCandidate> selected = SelectInterfaces(candidates, s);
+        std::vector<InterfaceCandidate> selected =
+            SelectInterfaces(candidates, allCandidates, s);
+
+        // --- source change --------------------------------------------------
+        // When the adapter carrying the internet changes (Ethernet -> VPN,
+        // Wi-Fi -> Ethernet, ...) the old adapter's counters are meaningless for
+        // the new connection, so start over rather than adding the two together.
+        if (DidSourceChange(selected)) {
+            std::wstring from = DescribeSelection(m_currentSource);
+            std::wstring to = DescribeSelection(selected);
+            if (s.resetOnSourceChange) {
+                m_totalDown = 0;
+                m_totalUp = 0;
+                m_downRate = 0.0;
+                m_upRate = 0.0;
+                m_haveBaseline = false;  // no delta across the switch
+                FlushTotals(true);
+                Wh_Log(L"Network source changed (%s -> %s): traffic counters reset",
+                       from.c_str(), to.c_str());
+            } else {
+                Wh_Log(L"Network source changed (%s -> %s): counters kept "
+                       L"(ResetOnSourceChange is off)",
+                       from.c_str(), to.c_str());
+            }
+            RememberSource(selected);
+        }
 
         // --- elapsed time ---------------------------------------------------
         LARGE_INTEGER now;
@@ -307,8 +341,15 @@ class NetworkMonitor {
     // Auto mode: prefer the adapter carrying the default route (the one Windows
     // would use to reach the internet). Falls back to the busiest active
     // adapter, and logs the decision.
+    //
+    // `candidates` is the filtered list (virtual adapters removed when the
+    // setting says so); `allCandidates` is everything real, used only so that a
+    // VPN/tunnel adapter can still win Auto mode when it actually carries the
+    // default route - otherwise switching a VPN on would leave the mod counting
+    // the physical adapter *and* the tunnel, i.e. double the real traffic.
     std::vector<InterfaceCandidate> SelectInterfaces(
         const std::vector<InterfaceCandidate>& candidates,
+        const std::vector<InterfaceCandidate>& allCandidates,
         const ModSettings& s) {
         std::vector<InterfaceCandidate> result;
 
@@ -370,9 +411,13 @@ class NetworkMonitor {
         }
 
         // --- Auto ------------------------------------------------------------
+        // The default route wins, even if it is a VPN/tunnel adapter that the
+        // virtual-adapter filter would normally hide: that adapter IS the
+        // internet right now, and counting it alone is what avoids the
+        // double-counting you get from summing the tunnel and its carrier.
         NET_IFINDEX bestIndex = GetInternetInterfaceIndex();
         if (bestIndex != 0) {
-            for (const auto& c : candidates) {
+            for (const auto& c : allCandidates) {
                 if (c.index == bestIndex && c.up) {
                     result.push_back(c);
                     return result;
@@ -467,6 +512,55 @@ class NetworkMonitor {
         return nullptr;
     }
 
+    // --- source-change detection -------------------------------------------
+    // The "source" is the set of LUIDs currently being counted. When it changes,
+    // the traffic being measured is a different connection.
+    static std::vector<unsigned long long> SelectionLuids(
+        const std::vector<InterfaceCandidate>& selected) {
+        std::vector<unsigned long long> luids;
+        luids.reserve(selected.size());
+        for (const auto& c : selected) {
+            luids.push_back(c.luid.Value);
+        }
+        std::sort(luids.begin(), luids.end());
+        return luids;
+    }
+
+    bool DidSourceChange(const std::vector<InterfaceCandidate>& selected) {
+        std::vector<unsigned long long> luids = SelectionLuids(selected);
+
+        // An empty selection means "disconnected", which is a transient state on
+        // the way between two adapters (unplug Ethernet, VPN comes up). Treating
+        // it as a change would reset twice; wait for the next real adapter.
+        if (luids.empty()) {
+            return false;
+        }
+        if (m_sourceLuids.empty()) {
+            m_sourceLuids = luids;
+            m_currentSource = selected;
+            return false;  // first selection is not a change
+        }
+        return luids != m_sourceLuids;
+    }
+
+    void RememberSource(const std::vector<InterfaceCandidate>& selected) {
+        m_sourceLuids = SelectionLuids(selected);
+        m_currentSource = selected;
+    }
+
+    static std::wstring DescribeSelection(
+        const std::vector<InterfaceCandidate>& selected) {
+        if (selected.empty()) {
+            return L"none";
+        }
+        if (selected.size() == 1) {
+            return selected[0].alias;
+        }
+        wchar_t buffer[64];
+        swprintf_s(buffer, L"%d interfaces", (int)selected.size());
+        return buffer;
+    }
+
     NetSnapshot MakeDisconnectedSnapshot() const {
         NetSnapshot snapshot;
         snapshot.downBytesPerSec = 0.0;
@@ -559,6 +653,10 @@ class NetworkMonitor {
     bool m_loggedSpecificMiss = false;
 
     std::vector<TrackedInterface> m_tracked;
+    // The set of interface LUIDs currently being counted, so a change of
+    // internet source (Ethernet -> VPN, ...) can be detected.
+    std::vector<unsigned long long> m_sourceLuids;
+    std::vector<InterfaceCandidate> m_currentSource;
     double m_downRate = 0.0;
     double m_upRate = 0.0;
     unsigned long long m_totalDown = 0;

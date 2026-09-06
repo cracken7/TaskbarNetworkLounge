@@ -51,6 +51,19 @@ static BOOL Wh_SetStringValue(const wchar_t* name, const wchar_t* value) {
     return TRUE;
 }
 
+// Mod-local int storage (used by the divider-offset persistence in p3/p6/p7).
+static std::map<std::wstring, int> g_intStorage;
+
+[[maybe_unused]] static int Wh_GetIntValue(const wchar_t* name, int defaultValue) {
+    auto it = g_intStorage.find(name);
+    return it == g_intStorage.end() ? defaultValue : it->second;
+}
+
+[[maybe_unused]] static BOOL Wh_SetIntValue(const wchar_t* name, int value) {
+    g_intStorage[name] = value;
+    return TRUE;
+}
+
 #include "../src/p2_core.inc"
 #include "../src/p3_settings.inc"
 #include "../src/p5_render.inc"

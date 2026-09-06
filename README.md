@@ -1,349 +1,169 @@
 # Taskbar Network Lounge
 
-A compact, native network monitor that lives on the Windows 11 taskbar — live
-download/upload speed plus total traffic — in the same place, size and acrylic
-style as [Taskbar Music Lounge](https://windhawk.net/mods/taskbar-music-lounge).
-
-Built as a [Windhawk](https://windhawk.net/) **tool mod**: pure C++ with GDI+ and
-the IP Helper API, no external app, no console window, no runtime, fully offline.
+A native network meter docked on the Windows 11 taskbar. Live download/upload
+speed, total traffic, an acrylic details panel — no console, no WinForms/WPF, no
+Electron, no browser, no Python runtime. One C++ DLL loaded into `explorer.exe`
+by [Windhawk](https://windhawk.net).
 
 ![Widget](docs/widget.png)
-
-Click it for an acrylic details panel with a Reset button:
-
 ![Details panel](docs/panel.png)
 
-## Features
+## Download
 
-* **Live speed** — download and upload, computed from the interface octet
-  counters (`GetIfTable2`) divided by the *measured* elapsed time
-  (`QueryPerformanceCounter`), never from an assumed timer period. No
-  `ipconfig`/`netstat` parsing, no PowerShell.
-* **Total traffic** — session totals, or persistent totals that survive
-  Explorer / Windhawk / Windows restarts (small file in `%LOCALAPPDATA%`,
-  written at most every 30 s and on unload, atomic replace, checksum-validated).
-* **Smart adapter selection** — Auto (the adapter that carries the default
-  route), Ethernet only, Wi-Fi only, all active adapters, or one specific
-  adapter by name. Loopback, tunnels, VPN, VMware, Hyper-V, Docker, TAP,
-  Bluetooth PAN and other non-physical adapters are filtered out by default.
-* **Three layouts** — speeds + totals in two columns (with `SPEED` / `TOTAL`
-  captions and a movable divider), speeds only in two rows, or a single line.
+| | |
+| --- | --- |
+| **Latest release (.wh.cpp)** | [Releases](https://github.com/cracken7/TaskbarNetworkLounge/releases/latest) |
+| **Direct source download** | [taskbar-network-lounge.wh.cpp](https://raw.githubusercontent.com/cracken7/TaskbarNetworkLounge/main/taskbar-network-lounge.wh.cpp) |
+| **Windhawk** | [windhawk.net](https://windhawk.net) (required) |
+
+Install: Windhawk → **Create a new mod** → paste the file → **Compile** → the
+widget appears on the taskbar. Full steps in [INSTALL.md](INSTALL.md).
+
+## What it does
+
+* **Live speed** — download and upload from the real interface counters
+  (`GetIfTable2`, IP Helper API) divided by real elapsed time
+  (`QueryPerformanceCounter`). No `ipconfig`/`netstat`/PowerShell parsing.
+* **Total traffic** — per session, or persistent across Explorer/Windhawk/Windows
+  restarts (a small checksummed file in `%LOCALAPPDATA%`).
+* **Follows the connection you are actually using.** Auto mode picks the adapter
+  holding the default route, so switching Ethernet → VPN → Wi-Fi moves the
+  measurement to the new adapter instead of adding the tunnel *and* its carrier
+  together (which would double every byte). Traffic totals reset on the switch,
+  so they always describe the connection in use. Or force Ethernet, Wi-Fi, all
+  adapters, or one specific adapter.
+* **Adjustable appearance** — 5 arrow styles, 4 text weights, font/arrow/widget/
+  panel sizes, and a divider between the SPEED and TOTAL columns you can **drag
+  with the mouse** (only the line moves; the text stays put).
+* **Details panel** on click: interface, status, IPv4, speeds, totals, Reset.
+  Tooltip on hover, context menu on right click.
 * **Bytes vs bits, never mixed up** — `MB/s` = megabytes per second,
-  `Mbps` = megabits per second (1 byte = 8 bits). The unit is always drawn next
-  to the number.
-* **Native look** — GDI+ anti-aliased vector arrows in five styles, grid-fitted
-  greyscale text with a contrast shadow (measured sharper than ClearType on
-  acrylic, and without its colour fringing), DWM rounded corners, acrylic blur,
-  Segoe UI in four weights, automatic light/dark theme.
-* **Tunable** — font size and weight, arrow style and size, divider position and
-  opacity, widget size and details-panel size, all from Windhawk settings with a
-  live reload.
-* **Rich tooltip** on hover; **details panel** on click; **context menu** on
-  right click (refresh, reset download/upload/both, open Windows network
-  settings, Windhawk settings, hide).
-* **Robust** — survives Explorer restarts, taskbar auto-hide, adapter
-  disconnect/reconnect, VPN toggling, sleep/wake, DPI and resolution changes.
-  Shows `No Network` / `Disconnected` instead of stale numbers.
-* **Cheap** — one `GetIfTable2` call per interval on a worker thread, repaint
-  only when the displayed values actually change. Measured at **0.3 % of one
-  core** and a flat ~27 MB working set (see [Measurements](#measurements)).
-
-## Installation
-
-1. Install [Windhawk](https://windhawk.net/) (Windows 10 or 11).
-2. Windhawk → **Explore** → **Create a new mod**.
-3. Delete the template and paste the contents of
-   [`taskbar-network-lounge.wh.cpp`](taskbar-network-lounge.wh.cpp).
-4. Press **Compile mod**, then enable it.
-
-The mod runs in its own dedicated process (`explorer.exe -tool-mod
-"local@taskbar-network-lounge"`), so a fault in the mod cannot take down the
-shell, and it is not loaded into every Explorer window.
-
-### Command-line install (no GUI)
-
-With an elevated shell:
-
-```bash
-python install.py            # compile + register + write default settings
-python install.py --no-settings   # keep existing settings
-```
-
-`install.py` does exactly what the Windhawk editor does: writes the source to
-`%PROGRAMDATA%\Windhawk\ModsSource`, compiles it with Windhawk's bundled clang
-into `Engine\Mods\64`, and writes the `HKLM\SOFTWARE\Windhawk\Engine\Mods` entry
-plus the default settings, bumping `SettingsChangeTime` so the engine reloads.
+  `Mbps` = megabits per second. The unit is always drawn next to the number.
+* **Arabic UI** — every setting name and description is translated; Windhawk
+  shows Arabic automatically when the Windows UI language is Arabic.
 
 ## Settings
 
 ### Appearance
 
-| Setting | Default | Notes |
+| Setting | Default | What it does |
 | --- | --- | --- |
-| Panel width | 220 | logical pixels at 100 % scaling |
-| Panel height | 52 | |
+| Panel width / height | 220 × 52 | widget size at 100 % scaling |
 | Font size | 13 | 13 measured sharpest; 11–12 for a smaller widget |
-| Text weight | Bold | `bold`, `black`, `semibold`, `regular`. Segoe UI Semibold/Black are separate font families and are resolved as such, with a fallback if missing |
-| Bold text | on | legacy switch — off forces Regular whatever Text weight says |
-| Arrow style | Rounded | `rounded`, `solid`, `chevron`, `triangle`, `circle` |
-| Arrow size | 120 % | of the font height; capped to the row pitch so the up/down glyphs can never touch or overflow — raise Panel height for genuinely bigger arrows |
-| SPEED / TOTAL captions | on | small captions above each column |
-| Divider position | 50 % | where the line between the groups sits (20–80 %); also splits the width between them |
+| Text weight | Bold | Bold / Black / Semibold / Regular |
+| Arrow style | Rounded | Rounded / Solid / Chevron / Triangle / Circle |
+| Arrow size | 120 % | of the font height; capped so it cannot overflow |
+| SPEED / TOTAL captions | on | small captions above the two columns |
+| Divider position | 50 % | splits the width between the two groups |
 | Divider opacity | 46 | 0 hides the line |
-| Details panel width | 240 | size of the pop-up panel |
-| Details panel height | 252 | |
-| Layout | Speeds + totals | `full`, `speeds` (two rows), `oneline` |
-| X offset | 12 | from the taskbar's left edge (top edge if vertical) |
-| Y offset | 0 | |
-| Scale with DPI | on | multiply everything by the monitor scaling |
+| **Drag the divider** | on | grab the line and move it; only the line moves |
+| Details panel width | 240 | pop-up panel size |
+| Details panel height | 276 | a floor, not a fixed size — the panel grows if its content needs more room |
+| Layout | full | speeds + totals / speeds only / one line |
+| X / Y offset | 12 / 0 | position along the taskbar |
+| Scale with DPI | on | multiply sizes by the monitor scaling |
 | Auto theme | on | follow the Windows light/dark theme |
-| Manual text color | `0xFFFFFF` | used only when Auto theme is off |
-| Colored arrows | on | blue download, green upload; off = monochrome |
-| Acrylic tint opacity | 0 | 0–255; 0 keeps pure glass |
-
-The five arrow styles and four text weights, rendered by `tests/test_styles.exe`
-(rows = weight, columns = arrow style):
-
-![Arrow styles and text weights](docs/arrow-styles.png)
+| Manual text colour | `0xFFFFFF` | used only when Auto theme is off |
+| Coloured arrows | on | blue download, green upload |
+| Acrylic tint opacity | 0 | 0 = pure glass |
 
 ### Network
 
-| Setting | Default | Notes |
+| Setting | Default | What it does |
 | --- | --- | --- |
-| Interface mode | Auto | `auto`, `ethernet`, `wifi`, `all`, `specific` |
-| Specific interface | *(empty)* | name or part of the name/description |
-| Ignore virtual adapters | on | loopback, tunnels, VPN, VMware, Hyper-V, Docker, TAP, Bluetooth |
-| Update interval | 1000 ms | clamped to 250–5000 ms |
-| Speed unit | Auto | `auto`/`bytes` → MB/s, `bits` → Mbps |
-| 1024-based byte units | on | off = 1 MB is 1 000 000 bytes; bit units are always 1000-based |
+| Interface mode | Auto | Auto (default route) / Ethernet / Wi-Fi / All / Specific |
+| Specific interface | — | name or part of the adapter name/description |
+| Ignore virtual adapters | on | skip loopback, tunnels, VMware, Hyper-V, Docker, TAP. In Auto mode a VPN still wins when it carries the internet |
+| **Reset counters when the source changes** | on | Ethernet → VPN → Wi-Fi zeroes the totals |
+| Update interval | 1000 ms | 250–5000 |
+| Speed unit | Auto | bytes (`MB/s`) or bits (`Mbps`) |
+| 1024-based byte units | on | 1 MB = 1048576 B, like Explorer |
 
-### Traffic
+### Traffic / Behavior
 
-| Setting | Default | Notes |
+| Setting | Default | What it does |
 | --- | --- | --- |
-| Traffic counter mode | Session | `session` or `persistent` |
-| Reset traffic counters | Do not reset | `download`, `upload`, `both` — applied once when the value changes |
+| Counter mode | Session | Session or Persistent (saved to disk) |
+| Reset traffic counters | none | download / upload / both, applied once |
+| Tooltip on hover | on | |
+| Details panel on click | on | |
+| Hide when fullscreen | off | |
+| Start enabled | on | off = widget stays hidden |
 
-Windhawk settings cannot contain a real push button, so **Reset traffic
-counters** is a dropdown: pick a value, save, and the reset fires once. The
-previously applied value is remembered in the mod's own storage, so the counters
-are not wiped on every settings read. The details panel's **Reset** button and
-the right-click menu do the same thing without touching settings.
+## Why the VPN case needed fixing
 
-### Behavior
-
-| Setting | Default | Notes |
-| --- | --- | --- |
-| Show tooltip on hover | on | |
-| Show details panel on click | on | |
-| Hide when fullscreen | off | uses `SHQueryUserNotificationState` |
-| Start enabled | on | off keeps the widget hidden |
-
-## Supported Windows versions
-
-* **Windows 11** — full support (rounded corners + acrylic). Developed and
-  tested on 10.0.26100 (24H2).
-* **Windows 10** — works; corners are square because DWM has no rounding.
-* x86-64. The source has no architecture-specific code, so Windhawk can also
-  compile it for ARM64, but that has not been tested here.
+With a VPN running, the tunnel adapter and the physical adapter both carry the
+same bytes: the tunnel sees the plaintext, the NIC sees the encrypted copy.
+Summing both is why a 1 GB download used to be reported as 2 GB. Auto mode now
+tracks the single adapter that owns the default route (`GetBestInterfaceEx`), so
+a VPN adapter is followed while it carries the internet and dropped when it does
+not — and the totals restart on the switch, because a byte count carried over
+from a different connection describes nothing.
 
 ## Architecture
 
-Single self-contained `.wh.cpp`, assembled from the parts in `src/`:
-
-| Part | Contents |
-| --- | --- |
-| `p1_header.inc` | Windhawk metadata, readme and settings blocks |
-| `p2_core.inc` | includes, undocumented DWM/z-band declarations, settings struct, shared state |
-| `p3_settings.inc` | settings loading, speed/byte formatters, persistent counter file |
-| `p4_network.inc` | `NetworkMonitor`: `GetIfTable2` sampling, interface selection, worker thread |
-| `p5_render.inc` | theme, acrylic, `DrawNetworkPanel`, `DrawDetailsPanel` |
-| `p6_window.inc` | taskbar geometry, event hook, tooltip, details panel, context menu |
-| `p7_lifecycle.inc` | widget window proc, UI thread, `WhTool_Mod*` callbacks, tool-mod launcher |
-
-Threading model:
-
-* **UI thread** — owns both windows, GDI+ and the message loop. `WM_PAINT` only
-  draws the last published snapshot; it never calls a network API.
-* **Worker thread** — samples `GetIfTable2` every *Update interval*, waits on two
-  events (stop / wake) so it never busy-waits, publishes a `NetSnapshot` under a
-  mutex and posts `APP_WM_DATA_UPDATED` **only when a displayed value changed**.
-* Settings are read under their own mutex and copied by value, so the worker and
-  the UI never block each other.
-
-The window is a `WS_POPUP` layered tool window (`WS_EX_LAYERED |
-WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE`), created with
-`CreateWindowInBand(ZBID_IMMERSIVE_NOTIFICATION)` when available and
-`CreateWindowEx` otherwise. No taskbar button, no Alt+Tab, never activated when
-moved or repainted, but fully interactive (not click-through).
-
-Positioning is always relative to the `Shell_TrayWnd` rectangle, re-evaluated on
-an `EVENT_OBJECT_LOCATIONCHANGE` hook scoped to the taskbar thread, on
-`TaskbarCreated`, on `WM_DPICHANGED`/`WM_DISPLAYCHANGE`, and by a 2-second
-watchdog that also detects Explorer restarts.
-
-## Build
-
-Windhawk ships its own clang + mingw-w64 toolchain, so nothing else is needed.
-
-```bash
-bash build.sh                 # regenerate the .wh.cpp and compile a test DLL
-bash tests/run_all.sh         # all six offline suites (see below)
-python install.py             # install into Windhawk (elevated)
+```
+src/p1_header.inc      metadata, @include explorer.exe, settings YAML (EN + AR)
+src/p2_core.inc        headers, ModSettings, atomics/globals, menu IDs
+src/p3_settings.inc    settings read + clamping, unit formatting, persistence
+src/p4_network.inc     GetIfTable2 sampling, adapter filtering + selection,
+                       source-change detection and counter reset
+src/p5_render.inc      GDI+ painting: arrows, sharp text, widget + details panel
+src/p6_window.inc      taskbar geometry, divider hit test, tooltip, context menu
+src/p7_lifecycle.inc   window proc (incl. divider drag), Wh_ModInit/AfterInit
 ```
 
-`build.sh` compiles with `-Wall -Wextra`; the build is warning-free.
+`build.sh` concatenates them into the single `taskbar-network-lounge.wh.cpp`
+Windhawk requires; `install.py` writes it into Windhawk and restarts the engine.
 
-### Test suites (`tests/`)
+## Build and test
+
+```bash
+bash build.sh              # regenerate the .wh.cpp and compile a test DLL
+bash tests/run_all.sh      # all seven offline suites
+python install.py          # install into Windhawk and restart the engine
+python tools/setopt.py --show
+```
 
 | Suite | What it proves |
 | --- | --- |
-| `test_geometry` | taskbar-edge classification and widget placement for all four taskbar positions, five DPI scales, two-monitor layouts |
-| `test_render` | 600 draw cycles with no GDI/USER leak, DPI metric math, degenerate sizes, disconnected state |
-| `test_styles` | every arrow style x text weight actually draws (ink coverage per cell) and writes `styles.png` |
-| `test_text` | measured text sharpness per rendering hint / size / weight — this is how the defaults were chosen |
-| `test_fit` | worst-case string widths vs the available column width, so nothing can clip |
 | `test_netmon` | formatters, persistence round trip + corruption handling, live sampling |
+| `test_geometry` | widget placement for every taskbar edge, multi-monitor |
+| `test_render` | 1500 paint cycles leak no GDI/USER handles |
+| `test_accuracy` | measured bytes vs the Windows counters |
+| `test_styles` | every arrow style × text weight actually draws (Segoe UI Semibold/Black are separate font families — a wrong family silently draws nothing in GDI+) |
+| `test_text` | text sharpness per hint/size/weight |
+| `test_fit` | worst-case string widths vs available column width |
+| `test_panel` | details-panel layout measured from the rendered pixels |
 
-### Development helpers (`tools/`)
+## Measurements on this machine
 
-| Tool | Purpose |
+Ethernet (Realtek PCIe GbE), 1920×1080 at 100 %, Windows 11, Windhawk 1.7.3.
+
+| | |
 | --- | --- |
-| `dbgmon.cpp` | minimal `OutputDebugString` monitor — reads `Wh_Log()` output without the Windhawk GUI |
-| `winfind.cpp` | list windows by class/title with styles and rects |
-| `shot.cpp` | capture a screen region to PNG (`CAPTUREBLT`, so layered windows are included) |
-| `uitest.cpp` | drive the widget: hover, click, right click, click the panel's Reset |
-| `taskbartest.cpp` | non-destructive taskbar tests: broadcast `TaskbarCreated`, hide/restore the taskbar |
-| `dpitest.cpp` | report per-monitor DPI and the widget's physical vs logical size |
-| `dpiscale.cpp` | get/set the display scaling at runtime (DisplayConfig DPI ioctl) |
-| `setopt.py` | change a setting and trigger a live settings reload |
-| `modstatus.py` | read Windhawk's per-process mod status files |
-| `perfcheck.ps1` | CPU / working set / handle / GDI+USER object deltas over a window |
-| `accuracy_integral.ps1` | integrate Windows' own perf counters and compare with the mod's totals |
+| Accuracy vs Windows counters | 1.0006 down / 1.0008 up over 22 s (0.06 %) |
+| CPU | 0.09–0.14 s per 30 s ≈ 0.3–0.5 % of one core |
+| RAM | 27–31 MB working set, ±60 KB drift |
+| GDI / USER handles | +1 / +2 after 1500 paints |
+| Text sharpness | 57.2 % fully saturated glyph pixels, 0 colour fringing |
 
-## Measurements
-
-Verified on this machine (Windows 11 10.0.26100.4652, Realtek PCIe GbE, 100 Mbit
-link, 1920×1080 @ 100 %):
-
-**Accuracy** — the mod's byte totals versus Windows' own
-`\Network Interface(*)\Bytes Received/sec` counters (the source Task Manager's
-Performance tab uses), integrated over the same 22-second window with a real
-download running:
-
-| | Download | Upload |
-| --- | --- | --- |
-| Perf counter integral | 67 569 314 B | 2 818 434 B |
-| Mod sampler total | 67 611 056 B | 2 820 786 B |
-| Ratio | **1.0006** | **1.0008** |
-
-**Cost** — the dedicated tool-mod process, 20/30/45 s windows, 1 s interval:
-
-| Metric | Value |
-| --- | --- |
-| CPU | 0.09–0.14 s per 30 s = **0.3–0.5 % of one core** (≈0.03 % of a 12-thread CPU) |
-| Working set | 27–31 MB, flat (±60 KB across a window) |
-| Handles | no change over 45 s |
-| GDI / USER objects | 19 / 22, stable |
-| Threads | 7–8 |
-
-**Leak check** — 1500 iterations of drawing the widget and the details panel into
-offscreen DCs: GDI +1, USER +2 total (GDI+ internals, not per-iteration).
-
-## What was tested
-
-Verified live on this machine, not just compiled:
-
-* Widget appears docked on the taskbar at `(12,1020) 220x52` with the taskbar at
-  `(0,1012)-(1920,1080)`; positions itself relative to `Shell_TrayWnd`.
-* Download and upload speeds during real 7.6 MB downloads (peak 4.09 MB/s on a
-  100 Mbit link) and while idle.
-* Accuracy against Windows perf counters: ratio 1.0006 / 1.0008 (table above).
-* All three layouts (`full`, `speeds`, `oneline`) and both unit systems
-  (`12.4 MB/s` vs `99.2 Mbps` — verified `8.82 Kbps` where bytes showed
-  `1.10 KB/s`).
-* All five arrow styles rendered live and captured, plus all four text weights
-  offline; every combination draws (no silent blank from a missing font family).
-* Arrow-size clamp: `ArrowScale` 90 / 120 / 180 / 400 all keep two separate
-  arrows with a ≥3 px gap and ≥1 px margin inside the widget — measured from
-  screenshots, not eyeballed.
-* Divider moved to 35 % and hidden (opacity 0), both verified on screen.
-* Light and dark theme: text flips to dark on a light theme, live, without
-  reloading the mod.
-* DPI 100 % / 125 % / 150 % switched at runtime: the widget scales with it, stays
-  vertically centred in the taskbar, and the text stays natively crisp (not
-  bitmap-stretched).
-* Hover tooltip, click-to-open details panel, click-to-close, click-to-reopen,
-  right-click context menu (all 7 items), Reset button in the panel, and reset
-  via the settings dropdown — totals dropped from tens of MB to KB each time.
-* Disconnected handling: Interface mode set to Wi-Fi with no Wi-Fi present shows
-  `Disconnected` instead of stale numbers, and recovers when set back to Auto.
-* Taskbar recovery: `TaskbarCreated` broadcast, and hiding/restoring
-  `Shell_TrayWnd` — the widget hides with the taskbar and comes back with it.
-* Mod unload/reload cycle: persistent counters were saved on unload
-  (`down=5042198 up=19413044`) and restored on reload (4.82 MB / 18.5 MB shown).
-* Corrupt counter file is rejected with a log line instead of crashing.
-
-## Troubleshooting
-
-**The widget does not appear.**
-Check that the mod is enabled and that the process exists:
-`Get-CimInstance Win32_Process -Filter "Name='explorer.exe'"` should list
-`-tool-mod "local@taskbar-network-lounge"`. Enable logging for the mod in
-Windhawk and watch the log, or run `build/dbgmon.exe 30` (it needs no debugger).
-
-**It overlaps the Start button or Widgets.**
-Increase *X offset*, or turn off Taskbar Settings → Widgets.
-
-**It shows `No Network` while I am online.**
-Interface mode is probably too narrow (e.g. Ethernet only while you are on
-Wi-Fi), or your adapter is being filtered as virtual. Set Interface mode to
-`all`, or turn off *Ignore virtual adapters*, and check the log line
-`Selected interface: ...`.
-
-**A VPN is up and the numbers look wrong.**
-VPN adapters are filtered by default, so you see the physical adapter's traffic
-(encrypted, slightly larger than the payload). To count the tunnel instead, set
-Interface mode to `specific` and name the VPN adapter, or turn off *Ignore
-virtual adapters*.
-
-**Speeds are slightly different from Task Manager.**
-Both read the same NIC counters but sample at different instants, so single
-readings differ. Integrated over a few seconds they agree to well under 1 %
-(see above).
-
-**Totals reset when I did not ask.**
-Session mode restarts at zero whenever the mod loads. Use `persistent` to keep
-them.
-
-**Nothing changed after I edited settings.**
-Windhawk applies settings live via `WhTool_ModSettingsChanged`; if a change is
-ignored, check the log for a parse error, or reload the mod.
+Text rendering was tuned by measurement, not by eye: ClearType on acrylic
+produced 112 fringed pixels, so the mod uses greyscale `AntiAliasGridFit` plus a
+1 px contrast shadow, and `GenericTypographic` string formatting (the default
+adds ~1/6 em of side padding, which was clipping `12.4 MB/s`).
 
 ## Known limitations
 
-* The widget attaches to the **primary** taskbar (`Shell_TrayWnd`); a secondary
-  monitor's `Shell_SecondaryTrayWnd` is only used as a fallback when no primary
-  taskbar exists. One widget, not one per monitor.
-* Multi-monitor was verified logically (the placement math is unit-tested for a
-  second monitor at a desktop offset) but not on real hardware — this machine has
-  a single display.
-* Left/right (vertical) taskbars are supported by the placement code and covered
-  by unit tests, but Windows 11 cannot dock its taskbar vertically, so this path
-  was not exercised live.
+* Attaches to the **primary** taskbar (`Shell_TrayWnd`); secondary taskbars are a
+  fallback only.
+* A vertical taskbar is handled in code but only verified offline.
 * ARM64 is untested.
-* Totals count only the interfaces currently being monitored. Changing Interface
-  mode changes what is counted from that point on; it does not retroactively
-  re-attribute traffic.
-* `Hide widget` in the context menu hides it until the mod reloads or *Start
-  enabled* is toggled — there is no tray icon to bring it back.
-* Persistent counters are stored per Windows user in `%LOCALAPPDATA%`, not
-  per adapter.
+* "Hide widget" has no tray icon to bring it back — re-enable via
+  Behavior → Start enabled.
+* Speeds are sampled, so one reading can differ from Task Manager by a few
+  percent; the average over a second matches.
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
-
-The Windhawk tool-mod launcher block at the end of the source is from the
-[Windhawk wiki](https://github.com/ramensoftware/windhawk/wiki/Mods-as-tools:-Running-mods-in-a-dedicated-process);
-the UI architecture follows Taskbar Music Lounge by Hashah2311.

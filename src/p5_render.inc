@@ -157,20 +157,28 @@ static void DrawArrow(Graphics& graphics,
             // Thick rounded stem plus a chevron head: the friendliest shape and
             // the one that survives smallest. Slightly narrower head than the
             // solid style so the numbers stay dominant.
+            //
+            // Rounded caps extend the stroke by half its width beyond the end
+            // point, so the drawn ink would reach past +-size/2. The geometry
+            // below is inset by half the stroke width to keep the visible ink
+            // inside the requested box - otherwise this style's glyphs sit on a
+            // different optical rail than the solid/triangle ones.
             REAL stem = size * 0.17f;
+            REAL inset = stem / 2.0f;
+            REAL top = cy - dir * (half - inset);
+            REAL tip = cy + dir * (half - inset);
             Pen stemPen(color, stem);
             stemPen.SetStartCap(LineCapRound);
             stemPen.SetEndCap(LineCapRound);
-            graphics.DrawLine(&stemPen, cx, cy - dir * half * 0.78f, cx,
-                              cy + dir * half * 0.40f);
+            graphics.DrawLine(&stemPen, cx, top, cx, cy + dir * half * 0.35f);
             Pen headPen(color, stem);
             headPen.SetStartCap(LineCapRound);
             headPen.SetEndCap(LineCapRound);
             headPen.SetLineJoin(LineJoinRound);
-            REAL w = size * 0.30f;
-            PointF head[3] = {PointF(cx - w, cy + dir * half * 0.14f),
-                              PointF(cx, cy + dir * half * 0.80f),
-                              PointF(cx + w, cy + dir * half * 0.14f)};
+            REAL w = size * 0.30f - inset;
+            PointF head[3] = {PointF(cx - w, tip - dir * (w + inset)),
+                              PointF(cx, tip),
+                              PointF(cx + w, tip - dir * (w + inset))};
             graphics.DrawLines(&headPen, head, 3);
             return;
         }
@@ -241,6 +249,72 @@ static void DrawSharpString(Graphics& graphics,
     graphics.DrawString(text, -1, &font, rect, &format, &brush);
 }
 
+// Draws a value as two pieces on a fixed grid: the digits left-aligned in a
+// fixed-width column, then the unit in a smaller, slightly dimmer font starting
+// immediately after that column. Both left edges are therefore constant, so
+// nothing slides horizontally as the number changes width ("491 KB/s" ->
+// "51.2 KB/s"), and the number reads first because the unit is de-emphasised.
+static void DrawValueWithFixedUnit(Graphics& graphics,
+                                   const std::wstring& text,
+                                   Font& numberFont,
+                                   Font& unitFont,
+                                   REAL x,
+                                   REAL y,
+                                   REAL width,
+                                   REAL height,
+                                   StringFormat& format,
+                                   const Brush& numberBrush,
+                                   const Brush& unitBrush,
+                                   bool lightBackground,
+                                   REAL shadowOffset,
+                                   REAL numberColumnWidth) {
+    size_t space = text.rfind(L' ');
+    if (space == std::wstring::npos || numberColumnWidth <= 0.0f ||
+        numberColumnWidth >= width) {
+        DrawSharpString(graphics, text.c_str(), numberFont,
+                        RectF(x, y, width, height), format, numberBrush,
+                        lightBackground, shadowOffset);
+        return;
+    }
+
+    std::wstring number = text.substr(0, space);
+    std::wstring unit = text.substr(space + 1);
+
+    DrawSharpString(graphics, number.c_str(), numberFont,
+                    RectF(x, y, numberColumnWidth, height), format, numberBrush,
+                    lightBackground, shadowOffset);
+
+    // The unit's baseline is nudged down so the two sizes sit on one baseline.
+    REAL baselineShift =
+        (numberFont.GetSize() - unitFont.GetSize()) * 0.78f;
+    DrawSharpString(graphics, unit.c_str(), unitFont,
+                    RectF(x + numberColumnWidth, y + baselineShift,
+                          width - numberColumnWidth, height),
+                    format, unitBrush, lightBackground, shadowOffset);
+}
+
+// Width of the widest number part ("1023", "12.4", "9.99") in this font, used as
+// the fixed digit column so the unit never moves.
+static REAL MeasureNumberColumn(Graphics& graphics,
+                                Font& font,
+                                StringFormat& format) {
+    static const wchar_t* kSamples[] = {L"1023", L"12.4", L"9.99", L"999"};
+    REAL widest = 0;
+    for (const wchar_t* sample : kSamples) {
+        RectF bounds;
+        graphics.MeasureString(sample, -1, &font, RectF(0, 0, 1000, 100), &format,
+                               &bounds);
+        if (bounds.Width > widest) {
+            widest = bounds.Width;
+        }
+    }
+    // One space of separation before the unit.
+    RectF spaceBounds;
+    graphics.MeasureString(L" ", -1, &font, RectF(0, 0, 1000, 100), &format,
+                           &spaceBounds);
+    return widest + spaceBounds.Width;
+}
+
 // Segoe UI Semibold/Black are separate FAMILIES, not style bits, so the weight
 // setting has to pick a family name as well as a style flag. Falls back to plain
 // "Segoe UI" + FontStyleBold if a family is missing.
@@ -303,6 +377,9 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
     Color textColor{GetCurrentTextColor(s)};
     const bool light = s.autoTheme ? IsSystemLightMode() : false;
     const REAL shadowOffset = (REAL)(scale >= 1.5 ? 2.0 : 1.0);
+    // Only the two-column layout has a divider; clear the hit zone so the drag
+    // handler cannot grab a line that is not drawn in the other layouts.
+    g_dividerHitX = -1.0f;
 
     Color downColor = textColor;
     Color upColor = textColor;
@@ -417,7 +494,8 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
 
     // Full layout: live speed on the left, cumulative traffic on the right, with
     // captions and a divider so the two groups can't be confused. DividerPos
-    // decides how the usable width is split.
+    // decides how the usable width is split; the dragged offset shifts the LINE
+    // ONLY, so grabbing it never moves the text with it.
     REAL columnGap = (REAL)(10.0 * scale);
     REAL usable = (REAL)width - padding * 2.0f - columnGap;
     REAL leftWidth = usable * (s.dividerPos / 100.0f);
@@ -439,11 +517,43 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
                         format, captionBrush, light, shadowOffset);
     }
 
-    // Divider centred in the gutter, spanning the content block only.
-    if (s.dividerOpacity > 0) {
-        Pen divider(BlendColor(textColor, (BYTE)s.dividerOpacity),
-                    (REAL)(1.0 * scale));
-        REAL dividerX = padding + leftWidth + columnGap / 2.0f;
+    // Divider. Its x is the split point plus the user's dragged offset - and the
+    // offset is applied HERE ONLY, never to leftWidth/rightX, so dragging the line
+    // moves nothing but the line. The painted x is published for the hit test so
+    // the grab zone always matches what is on screen.
+    REAL dividerX = padding + leftWidth + columnGap / 2.0f;
+    if (s.dividerDraggable) {
+        // Read the LIVE atomic, not the settings snapshot: during a drag the
+        // offset changes on every WM_MOUSEMOVE and settings are only reloaded on
+        // mouse-up, so using s.dividerOffset here would make the line lag behind
+        // the cursor and only snap into place on release.
+        dividerX += (REAL)(g_dividerOffset.load() * scale);
+        // Keep it inside the widget even if a stale offset is larger than the
+        // current width (e.g. the widget was made narrower after a drag).
+        REAL minX = padding;
+        REAL maxX = (REAL)width - padding;
+        if (dividerX < minX) {
+            dividerX = minX;
+        }
+        if (dividerX > maxX) {
+            dividerX = maxX;
+        }
+    }
+    g_dividerHitX = (float)dividerX;
+
+    if (s.dividerOpacity > 0 || (s.dividerDraggable && g_hoverState.load() == 3)) {
+        // While being dragged (or hovered) the line brightens, so it is obvious
+        // that it is the thing being grabbed even at opacity 0.
+        BYTE alpha = (BYTE)s.dividerOpacity;
+        REAL thickness = (REAL)(1.0 * scale);
+        if (g_dividerDragging.load()) {
+            alpha = 220;
+            thickness = (REAL)(2.0 * scale);
+        } else if (g_hoverState.load() == 3) {
+            alpha = (BYTE)(alpha < 140 ? 140 : alpha);
+            thickness = (REAL)(2.0 * scale);
+        }
+        Pen divider(BlendColor(textColor, alpha), thickness);
         REAL top = s.showColumnLabels ? height * 0.10f : height * 0.20f;
         REAL bottom = s.showColumnLabels ? height * 0.90f : height * 0.80f;
         graphics.DrawLine(&divider, dividerX, top, dividerX, bottom);
@@ -456,6 +566,64 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
 }
 
 // --- Details panel painting ------------------------------------------------
+// All vertical rhythm lives in one struct so the rows cannot drift apart and the
+// panel's natural height is known before it is created.
+struct PanelLayout {
+    REAL base = 12.0f;
+    REAL margin = 16.0f;
+    REAL top = 16.0f;
+    REAL captionRow = 0;
+    REAL headlineRow = 0;
+    REAL labelRow = 0;
+    REAL valueRow = 0;
+    REAL totalRow = 0;
+    REAL rowGap = 0;
+    REAL sectionGap = 0;
+    REAL buttonGap = 0;
+    REAL buttonHeight = 0;
+    REAL arrow = 0;
+    REAL totalArrow = 0;
+    REAL arrowGap = 0;
+    REAL columnGap = 0;
+    REAL naturalHeight = 0;  // height needed to show everything uncramped
+};
+
+static PanelLayout ComputePanelLayout(double scale) {
+    PanelLayout l;
+    l.base = (REAL)(12.0 * scale);
+    const REAL b = l.base;
+
+    l.margin = b * 1.34f;
+    l.top = l.margin;
+    // Row heights are >= the font line height (Segoe UI is ~1.33 em) so nothing
+    // is ever clipped and descenders never touch the row below.
+    l.captionRow = b * 1.40f;    // caption font 0.82 em
+    l.headlineRow = b * 1.80f;   // headline font 1.25 em
+    l.labelRow = b * 1.30f;      // label font 0.92 em
+    l.valueRow = b * 2.00f;      // value font 1.45 em
+    l.totalRow = b * 1.55f;      // total font 1.08 em
+    l.rowGap = b * 0.60f;
+    l.sectionGap = b * 0.50f;
+    l.buttonGap = b * 1.30f;
+    l.buttonHeight = b * 2.70f;
+    l.arrow = b * 1.50f;
+    // The totals use the same arrow size as the speeds so every glyph in the
+    // panel sits on one optical rail; only the text gets smaller.
+    l.totalArrow = l.arrow;
+    l.arrowGap = b * 0.60f;
+    // Wide enough for "1023 MB" / "4.82 GB" plus the arrow gutter, so the second
+    // column starts at the panel's midpoint rather than wherever the first value
+    // happened to end.
+    l.columnGap = b * 0.50f;
+
+    l.naturalHeight = l.top + l.captionRow + l.headlineRow + l.labelRow +
+                      l.sectionGap * 2.0f +
+                      (l.labelRow + l.valueRow) * 2.0f + l.rowGap * 1.6f +
+                      l.sectionGap * 2.0f + l.captionRow + l.totalRow +
+                      l.buttonGap + l.buttonHeight + l.margin;
+    return l;
+}
+
 struct PanelMetrics {
     int width = 240;
     int height = 250;
@@ -464,11 +632,18 @@ struct PanelMetrics {
 
 static PanelMetrics ComputePanelMetrics(double scale) {
     ModSettings s = GetSettings();
+    PanelLayout layout = ComputePanelLayout(scale);
+
     PanelMetrics metrics;
     metrics.width = (int)(s.detailsWidth * scale);
-    metrics.height = (int)(s.detailsHeight * scale);
-    int margin = (int)(16 * scale);
-    int buttonHeight = (int)(32 * scale);
+    // The setting is a minimum: the panel never shrinks below the height its own
+    // content needs, so no row can end up cramped or clipped.
+    int wanted = (int)(s.detailsHeight * scale);
+    int needed = (int)(layout.naturalHeight + 0.5f);
+    metrics.height = wanted > needed ? wanted : needed;
+
+    int margin = (int)layout.margin;
+    int buttonHeight = (int)layout.buttonHeight;
     metrics.resetButton.left = margin;
     metrics.resetButton.right = metrics.width - margin;
     metrics.resetButton.bottom = metrics.height - margin;
@@ -506,112 +681,189 @@ static void DrawDetailsPanel(HDC hdc, int width, int height, HWND hwnd) {
     INT weight = FontStyleBold;
     MakeFontFamily(ResolveWeight(s.textWeight), familyPtr, weight);
     FontFamily& fontFamily = *familyPtr;
-    REAL base = (REAL)(12.0 * scale);
-    Font fontTitle(&fontFamily, base * 0.9f, weight, UnitPixel);
-    Font fontLabel(&fontFamily, base * 0.95f, weight, UnitPixel);
-    Font fontValue(&fontFamily, base * 1.4f, weight, UnitPixel);
-    Font fontSmall(&fontFamily, base * 1.05f, weight, UnitPixel);
+    // Captions keep a fixed bold weight so the section hierarchy survives a
+    // lighter weight choice for the values.
+    std::unique_ptr<FontFamily> captionFamilyPtr;
+    INT captionWeight = FontStyleBold;
+    MakeFontFamily(ResolveWeight(TextWeight::Bold), captionFamilyPtr,
+                   captionWeight);
+
+    const PanelLayout layout = ComputePanelLayout(scale);
+    const REAL base = layout.base;
+
+    Font fontCaption(captionFamilyPtr.get(), base * 0.82f, captionWeight, UnitPixel);
+    Font fontHeadline(&fontFamily, base * 1.25f, weight, UnitPixel);
+    Font fontLabel(&fontFamily, base * 0.92f, weight, UnitPixel);
+    Font fontValue(&fontFamily, base * 1.45f, weight, UnitPixel);
+    Font fontValueUnit(&fontFamily, base * 1.05f, weight, UnitPixel);
+    Font fontTotal(&fontFamily, base * 1.08f, weight, UnitPixel);
+    Font fontTotalUnit(&fontFamily, base * 0.92f, weight, UnitPixel);
 
     SolidBrush textBrush(textColor);
-    SolidBrush labelBrush(BlendColor(textColor, 225));
+    SolidBrush labelBrush(BlendColor(textColor, 215));
+    SolidBrush captionBrush(BlendColor(textColor, 200));
+    SolidBrush unitBrush(BlendColor(textColor, 190));
 
+    // One shared format: near/near so every row is positioned by its own rect
+    // rather than by vertical centring inside a guessed box.
     StringFormat left(StringFormat::GenericTypographic());
     left.SetAlignment(StringAlignmentNear);
     left.SetLineAlignment(StringAlignmentNear);
     left.SetFormatFlags(left.GetFormatFlags() | StringFormatFlagsNoWrap |
                         StringFormatFlagsNoClip);
 
-    REAL margin = (REAL)(16.0 * scale);
-    REAL y = margin;
+    const REAL margin = layout.margin;
+    const REAL contentWidth = (REAL)width - margin * 2.0f;
+    REAL y = layout.top;
 
-    DrawSharpString(graphics, L"NETWORK", fontTitle,
-                    RectF(margin, y, (REAL)width - margin * 2, base * 1.5f), left,
-                    labelBrush, light, shadowOffset);
-    y += base * 1.7f;
+    auto separator = [&](REAL atY) {
+        Pen pen(BlendColor(textColor, 38), (REAL)(1.0 * scale));
+        graphics.DrawLine(&pen, margin, atY, margin + contentWidth, atY);
+    };
+
+    // --- Header ------------------------------------------------------------
+    DrawSharpString(graphics, L"NETWORK", fontCaption,
+                    RectF(margin, y, contentWidth, layout.captionRow), left,
+                    captionBrush, light, shadowOffset);
+    y += layout.captionRow;
 
     std::wstring headline = snapshot.ifName;
     if (!snapshot.ifKind.empty() && snapshot.ifKind != snapshot.ifName) {
         headline += L"  (" + snapshot.ifKind + L")";
     }
-    DrawSharpString(graphics, headline.c_str(), fontSmall,
-                    RectF(margin, y, (REAL)width - margin * 2, base * 1.6f), left,
+    DrawSharpString(graphics, headline.c_str(), fontHeadline,
+                    RectF(margin, y, contentWidth, layout.headlineRow), left,
                     textBrush, light, shadowOffset);
-    y += base * 1.4f;
+    y += layout.headlineRow;
 
     std::wstring status = snapshot.connected ? L"Connected" : L"Disconnected";
     if (!snapshot.ipv4.empty()) {
-        status += L"  -  " + snapshot.ipv4;
+        status += L"  \u00B7  " + snapshot.ipv4;  // middle dot, single spaces
     }
     DrawSharpString(graphics, status.c_str(), fontLabel,
-                    RectF(margin, y, (REAL)width - margin * 2, base * 1.6f), left,
+                    RectF(margin, y, contentWidth, layout.labelRow), left,
                     labelBrush, light, shadowOffset);
-    y += base * 2.0f;
+    y += layout.labelRow;
+
+    y += layout.sectionGap;
+    separator(y);
+    y += layout.sectionGap;
+
+    // --- Live speeds -------------------------------------------------------
+    // The arrow sits in its own gutter and is centred on the label+value pair;
+    // label and value then share ONE left edge, so the block has a single
+    // text column instead of two competing ones.
+    const REAL arrow = layout.arrow;
+    const REAL textX = margin + arrow + layout.arrowGap;
+    const REAL textWidth = contentWidth - arrow - layout.arrowGap;
+    const REAL valueNumberColumn = MeasureNumberColumn(graphics, fontValue, left);
 
     auto drawMetric = [&](const wchar_t* label, const std::wstring& value,
                           bool down) {
-        REAL arrow = base * 1.45f;
+        REAL blockTop = y;
+        REAL blockHeight = layout.labelRow + layout.valueRow;
         DrawArrow(graphics, down ? downColor : upColor, margin + arrow / 2.0f,
-                  y + base * 0.6f, arrow, down, s.arrowStyle);
+                  blockTop + blockHeight / 2.0f, arrow, down, s.arrowStyle);
         DrawSharpString(graphics, label, fontLabel,
-                        RectF(margin + arrow + (REAL)(7.0 * scale), y,
-                              (REAL)width - margin * 2, base * 1.4f),
-                        left, labelBrush, light, shadowOffset);
-        y += base * 1.45f;
-        DrawSharpString(graphics, value.c_str(), fontValue,
-                        RectF(margin, y, (REAL)width - margin * 2, base * 1.8f),
-                        left, textBrush, light, shadowOffset);
-        y += base * 1.85f;
+                        RectF(textX, y, textWidth, layout.labelRow), left,
+                        labelBrush, light, shadowOffset);
+        y += layout.labelRow;
+        DrawValueWithFixedUnit(graphics, value, fontValue, fontValueUnit, textX, y,
+                               textWidth, layout.valueRow, left, textBrush,
+                               unitBrush, light, shadowOffset, valueNumberColumn);
+        y += layout.valueRow;
     };
 
     drawMetric(L"Download", FormatSpeed(snapshot.downBytesPerSec, s), true);
+    y += layout.rowGap * 1.6f;  // clear separation between the two pairs
     drawMetric(L"Upload", FormatSpeed(snapshot.upBytesPerSec, s), false);
 
-    DrawSharpString(
-        graphics,
-        s.counterMode == CounterMode::Persistent ? L"Traffic (persistent)"
-                                                 : L"Traffic (session)",
-        fontLabel, RectF(margin, y, (REAL)width - margin * 2, base * 1.4f), left,
-        labelBrush, light, shadowOffset);
-    y += base * 1.5f;
+    y += layout.sectionGap;
+    separator(y);
+    y += layout.sectionGap;
 
-    REAL arrow = base * 1.35f;
-    DrawArrow(graphics, downColor, margin + arrow / 2.0f, y + base * 0.55f, arrow,
-              true, s.arrowStyle);
-    DrawSharpString(graphics, FormatBytes(snapshot.totalDown, s).c_str(), fontSmall,
-                    RectF(margin + arrow + (REAL)(7.0 * scale), y,
-                          (REAL)width / 2, base * 1.5f),
-                    left, textBrush, light, shadowOffset);
-    REAL midX = (REAL)width / 2.0f + (REAL)(4.0 * scale);
-    DrawArrow(graphics, upColor, midX + arrow / 2.0f, y + base * 0.55f, arrow,
-              false, s.arrowStyle);
-    DrawSharpString(graphics, FormatBytes(snapshot.totalUp, s).c_str(), fontSmall,
-                    RectF(midX + arrow + (REAL)(7.0 * scale), y, (REAL)width / 2,
-                          base * 1.5f),
-                    left, textBrush, light, shadowOffset);
+    // --- Totals ------------------------------------------------------------
+    DrawSharpString(graphics,
+                    s.counterMode == CounterMode::Persistent
+                        ? L"TRAFFIC \u00B7 PERSISTENT"
+                        : L"TRAFFIC \u00B7 SESSION",
+                    fontCaption, RectF(margin, y, contentWidth, layout.captionRow),
+                    left, captionBrush, light, shadowOffset);
+    y += layout.captionRow;
 
-    // Reset button
+    // Totals row: the download pair sits on the same left rail as everything
+    // else; the upload pair is right-aligned as a group, so the row has equal
+    // padding at both ends instead of a pocket of dead space on the right.
+    const REAL totalArrow = layout.totalArrow;
+    const REAL halfWidth = (contentWidth - layout.columnGap) / 2.0f;
+    const REAL totalNumberColumn = MeasureNumberColumn(graphics, fontTotal, left);
+
+    DrawArrow(graphics, downColor, margin + arrow / 2.0f,
+              y + layout.totalRow / 2.0f, totalArrow, true, s.arrowStyle);
+    DrawValueWithFixedUnit(graphics, FormatBytes(snapshot.totalDown, s), fontTotal,
+                           fontTotalUnit, margin + arrow + layout.arrowGap, y,
+                           halfWidth - arrow - layout.arrowGap, layout.totalRow,
+                           left, textBrush, unitBrush, light, shadowOffset,
+                           totalNumberColumn);
+
+    // The upload pair is placed as a group whose right edge lands on the content
+    // edge, so the row has equal padding at both ends. Its own digits still use
+    // the fixed number column, so the unit does not move as the value grows.
+    std::wstring upTotalText = FormatBytes(snapshot.totalUp, s);
+    size_t upSpace = upTotalText.rfind(L' ');
+    std::wstring upUnit = upSpace == std::wstring::npos
+                              ? std::wstring()
+                              : upTotalText.substr(upSpace + 1);
+    RectF unitBounds;
+    graphics.MeasureString(upUnit.empty() ? L"GB" : upUnit.c_str(), -1,
+                           &fontTotalUnit,
+                           RectF(0, 0, contentWidth, layout.totalRow), &left,
+                           &unitBounds);
+    REAL upGroupWidth =
+        arrow + layout.arrowGap + totalNumberColumn + unitBounds.Width;
+    REAL upGroupX = margin + contentWidth - upGroupWidth;
+    REAL upGroupFloor = margin + halfWidth + layout.columnGap;
+    if (upGroupX < upGroupFloor) {
+        upGroupX = upGroupFloor;
+    }
+    DrawArrow(graphics, upColor, upGroupX + arrow / 2.0f,
+              y + layout.totalRow / 2.0f, totalArrow, false, s.arrowStyle);
+    DrawValueWithFixedUnit(graphics, upTotalText, fontTotal, fontTotalUnit,
+                           upGroupX + arrow + layout.arrowGap, y,
+                           upGroupWidth - arrow - layout.arrowGap, layout.totalRow,
+                           left, textBrush, unitBrush, light, shadowOffset,
+                           totalNumberColumn);
+    y += layout.totalRow;
+
+    // --- Reset button ------------------------------------------------------
+    // Positioned from the panel's real height, so it stays pinned to the bottom
+    // margin whatever the content above it needed.
     PanelMetrics metrics = ComputePanelMetrics(scale);
+    RECT button = metrics.resetButton;
+    // The panel may be taller than the requested size (natural-height floor), so
+    // anchor to the DC we were actually given rather than to metrics.height.
+    int buttonHeight = button.bottom - button.top;
+    button.bottom = height - (int)margin;
+    button.top = button.bottom - buttonHeight;
+    button.left = (int)margin;
+    button.right = width - (int)margin;
+
     GraphicsPath buttonPath;
-    AddRoundedRect(buttonPath, (REAL)metrics.resetButton.left,
-                   (REAL)metrics.resetButton.top,
-                   (REAL)(metrics.resetButton.right - metrics.resetButton.left),
-                   (REAL)(metrics.resetButton.bottom - metrics.resetButton.top),
-                   (REAL)(6.0 * scale));
+    AddRoundedRect(buttonPath, (REAL)button.left, (REAL)button.top,
+                   (REAL)(button.right - button.left),
+                   (REAL)(button.bottom - button.top), (REAL)(6.0 * scale));
     bool hoverReset = g_hoverState.load() == 2;
     SolidBrush buttonBrush(BlendColor(textColor, hoverReset ? 56 : 30));
     graphics.FillPath(&buttonBrush, &buttonPath);
-    Pen buttonPen(BlendColor(textColor, 70), (REAL)(1.0 * scale));
+    Pen buttonPen(BlendColor(textColor, hoverReset ? 110 : 70), (REAL)(1.0 * scale));
     graphics.DrawPath(&buttonPen, &buttonPath);
 
     StringFormat centered;
     centered.SetAlignment(StringAlignmentCenter);
     centered.SetLineAlignment(StringAlignmentCenter);
-    DrawSharpString(graphics, L"Reset", fontSmall,
-                    RectF((REAL)metrics.resetButton.left,
-                          (REAL)metrics.resetButton.top,
-                          (REAL)(metrics.resetButton.right -
-                                 metrics.resetButton.left),
-                          (REAL)(metrics.resetButton.bottom -
-                                 metrics.resetButton.top)),
+    DrawSharpString(graphics, L"Reset traffic counters", fontLabel,
+                    RectF((REAL)button.left, (REAL)button.top,
+                          (REAL)(button.right - button.left),
+                          (REAL)(button.bottom - button.top)),
                     centered, textBrush, light, shadowOffset);
 }

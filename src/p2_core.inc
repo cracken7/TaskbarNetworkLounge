@@ -67,6 +67,7 @@ static const WCHAR* kStorageFileName = L"traffic.dat";
 #define IDM_NET_SETTINGS 104
 #define IDM_WH_SETTINGS 105
 #define IDM_HIDE 106
+#define IDM_RESET_DIVIDER 107
 
 // --- Undocumented composition / z-band APIs (same as the reference mod) ----
 typedef enum _WINDOWCOMPOSITIONATTRIB { WCA_ACCENT_POLICY = 19 } WINDOWCOMPOSITIONATTRIB;
@@ -147,9 +148,11 @@ struct ModSettings {
     int arrowScale = 120;       // percent of font size
     bool showColumnLabels = true;
     int dividerPos = 50;        // percent of the usable width
+    int dividerOffset = 0;      // px nudge on top of dividerPos, set by dragging
+    bool dividerDraggable = true;
     int dividerOpacity = 46;    // 0 = hidden
     int detailsWidth = 240;
-    int detailsHeight = 252;
+    int detailsHeight = 276;
     LayoutMode layout = LayoutMode::Full;
     int offsetX = 12;
     int offsetY = 0;
@@ -162,6 +165,7 @@ struct ModSettings {
     InterfaceMode ifMode = InterfaceMode::Auto;
     std::wstring selectedInterface;
     bool excludeVirtual = true;
+    bool resetOnSourceChange = true;
     int updateInterval = 1000;
     SpeedUnit speedUnit = SpeedUnit::Auto;
     bool binaryUnits = true;
@@ -209,6 +213,13 @@ static std::atomic<unsigned long long> g_panelHiddenAt{0};  // GetTickCount64
 static std::atomic<int> g_hoverState{0};  // 0 none, 1 widget, 2 reset button
 static std::atomic<bool> g_hiddenByUser{false};
 static std::atomic<unsigned long long> g_pendingReset{0};  // bit0 dl, bit1 ul
+// Divider drag state. g_dividerHitX is written by the painter every frame so the
+// hit test always matches the line that is actually on screen, whatever the
+// layout/DPI. g_dividerOffset is the user's dragged offset in *logical* pixels
+// (it is scaled at paint time), kept live here and persisted on mouse-up.
+static std::atomic<float> g_dividerHitX{-1.0f};
+static std::atomic<int> g_dividerOffset{0};
+static std::atomic<bool> g_dividerDragging{false};
 static UINT g_taskbarCreatedMsg = 0;
 static HWINEVENTHOOK g_taskbarHook = nullptr;
 static HWND g_hookedTaskbar = nullptr;

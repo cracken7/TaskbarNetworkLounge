@@ -2,59 +2,57 @@
 // @id              taskbar-network-lounge
 // @name            Taskbar Network Lounge
 // @description     A compact, native network monitor docked on the taskbar: live download/upload speed plus total traffic.
-// @version         1.0.0
+// @version         1.1.0
 // @author          cracken7
 // @github          https://github.com/cracken7
 // @include         explorer.exe
 // @compilerOptions -lole32 -ldwmapi -lgdi32 -luser32 -lshcore -lgdiplus -lshell32 -lcomctl32 -liphlpapi -lws2_32
+//
+// Arabic metadata. Windhawk picks the closest match to the UI language, so the
+// short "ar" tag covers ar-EG, ar-SA and the rest.
+// @name:ar         شريط مراقبة الشبكة
+// @description:ar  مؤشر شبكة صغير وأصلي على شريط المهام: سرعة التحميل والرفع الحيّة مع إجمالي الترافيك.
 // ==/WindhawkMod==
 
 // ==WindhawkModReadme==
 /*
 # Taskbar Network Lounge
 
-A tiny, native-looking network meter that lives on the Windows 11 taskbar, in the
-same spot and with the same acrylic / rounded / theme-aware styling as
-**Taskbar Music Lounge**.
+A small native network meter docked on the Windows 11 taskbar, styled like the
+rest of the shell: acrylic, rounded, theme-aware.
 
 ```
-  v  12.4 MB/s     v  4.82 GB
-  ^  1.8 MB/s      ^  1.17 GB
+  v  12.4 MB/s  |  v  4.82 GB
+  ^  1.8 MB/s   |  ^  1.17 GB
 ```
 
-## Features
-* **Live speed** - download and upload, measured from real interface counters
-  (`GetIfTable2`, IP Helper API) divided by real elapsed time
-  (`QueryPerformanceCounter`). No `ipconfig`/`netstat`/PowerShell parsing.
-* **Total traffic** - session totals, or persistent totals that survive Explorer /
-  Windhawk / Windows restarts (saved to a small file in `%LOCALAPPDATA%`).
-* **Smart adapter selection** - Auto (the adapter that actually carries your
-  internet traffic), Ethernet, Wi-Fi, all active adapters, or one specific
-  adapter. Loopback / tunnels / VMware / Hyper-V / Docker / VPN adapters are
-  filtered out by default (configurable).
-* **Native styling** - GDI+ anti-aliased drawing, DWM rounded corners, acrylic
-  blur, Segoe UI, automatic light/dark theme.
-* **Details panel** - click the widget for an acrylic panel with interface,
-  status, IPv4, speeds, totals and a **Reset** button.
-* **Rich tooltip** on hover, **context menu** on right click (refresh, reset,
-  open Windows network settings, hide).
-* **Bytes vs bits** - `MB/s` = Megabytes per second, `Mbps` = Megabits per
-  second (1 byte = 8 bits). Pick either; the unit is always drawn next to the
-  number so the two can never be confused.
-* Cheap: one `GetIfTable2` call per interval on a worker thread, repaint only
-  when the numbers actually change, no busy waiting.
+* **Live speed and total traffic** from the real interface counters
+  (`GetIfTable2`) divided by real elapsed time (`QueryPerformanceCounter`) - no
+  `ipconfig`/`netstat`/PowerShell parsing. Totals can be per session or saved to
+  disk.
+* **Follows the connection you are actually using.** Auto mode picks the adapter
+  carrying the default route, so turning a VPN on switches to the tunnel instead
+  of counting the tunnel *and* its carrier (which would double every byte).
+  Counters reset on the switch, so the totals always describe the current
+  connection. Or pick Ethernet / Wi-Fi / all / one specific adapter.
+* **Adjustable look** - 5 arrow styles, 4 text weights, font and arrow size,
+  widget and panel size, and a divider between the SPEED and TOTAL columns that
+  you can **drag with the mouse** (only the line moves).
+* **Details panel** on click (interface, status, IPv4, speeds, totals, Reset),
+  tooltip on hover, context menu on right click.
+* **Bytes vs bits** - `MB/s` is megabytes, `Mbps` is megabits; the unit is always
+  drawn next to the number.
+* Cheap: one API call per interval on a worker thread, repaint only when the
+  numbers change.
 
 ## Requirements
-* Windows 11 (rounded corners + acrylic). Works on Windows 10 with squared corners.
-* Taskbar Widgets should be off, otherwise they overlap: Taskbar Settings -> Widgets -> Off.
+Windows 11 (rounded corners + acrylic); works on Windows 10 with square corners.
+Turn Taskbar Widgets off if they overlap: Taskbar Settings -> Widgets -> Off.
 
-## Notes / limitations
-* The widget attaches to the **primary** taskbar (`Shell_TrayWnd`). Secondary
-  taskbars are used only as a fallback when no primary taskbar exists.
-* Totals count only the interfaces that are being monitored, from the moment the
-  mod started (Session) or from the stored value (Persistent).
-* Speeds are sampled, so they can differ from Task Manager by a few percent
-  within one sampling window; the running average over a second matches.
+## Notes
+* Attaches to the primary taskbar (`Shell_TrayWnd`).
+* Speeds are sampled, so a single reading can differ from Task Manager by a few
+  percent; the average over a second matches.
 */
 // ==/WindhawkModReadme==
 
@@ -64,15 +62,23 @@ same spot and with the same acrylic / rounded / theme-aware styling as
   - PanelWidth: 220
     $name: Panel width
     $description: Width of the widget in pixels (at 100% scaling).
+    $name:ar: عرض الودجت
+    $description:ar: عرض الودجت بالبكسل (عند تحجيم 100%).
   - PanelHeight: 52
     $name: Panel height
     $description: Height of the widget in pixels (at 100% scaling).
+    $name:ar: ارتفاع الودجت
+    $description:ar: ارتفاع الودجت بالبكسل (عند تحجيم 100%). زوّده لو عايز أسهم أكبر.
   - FontSize: 13
     $name: Font size
     $description: 13 is the sharpest default (measured); 11-12 for a smaller widget.
+    $name:ar: حجم الخط
+    $description:ar: 13 هو الأوضح (بالقياس الفعلي)؛ 11-12 لودجت أصغر.
   - BoldText: true
     $name: Bold text
     $description: Bold is much sharper at small sizes. Off = regular weight.
+    $name:ar: خط عريض
+    $description:ar: العريض أوضح بكثير في المقاسات الصغيرة. إيقاف = وزن عادي.
   - TextWeight: bold
     $name: Text weight
     $options:
@@ -80,6 +86,12 @@ same spot and with the same acrylic / rounded / theme-aware styling as
     - black: Black (heaviest - Segoe UI Black)
     - semibold: Semibold
     - regular: Regular
+    $name:ar: وزن الخط
+    $options:ar:
+    - bold: عريض (الأوضح - مُستحسن)
+    - black: أسود (الأثقل - Segoe UI Black)
+    - semibold: نصف عريض
+    - regular: عادي
   - ArrowStyle: rounded
     $name: Arrow style
     $options:
@@ -88,50 +100,94 @@ same spot and with the same acrylic / rounded / theme-aware styling as
     - chevron: Chevron (thin, modern)
     - triangle: Triangle (compact, no stem)
     - circle: Arrow in a circle (badge)
+    $name:ar: شكل السهم
+    $options:ar:
+    - solid: سهم صلب (ساق + رأس)
+    - rounded: سهم دائري الأطراف (ناعم، شبيه بـFluent)
+    - chevron: شيفرون (رفيع وعصري)
+    - triangle: مثلث (مضغوط، بدون ساق)
+    - circle: سهم داخل دائرة (شعار)
   - ArrowScale: 120
     $name: Arrow size (% of font size)
     $description: 120 = arrow is 1.2x the font height. Capped so it cannot overflow the widget - raise Panel height for bigger arrows. Range 60-400.
+    $name:ar: حجم السهم (% من حجم الخط)
+    $description:ar: 120 = السهم 1.2 ضعف ارتفاع الخط. مقيّد تلقائيًا حتى لا يخرج من الودجت - زوّد ارتفاع الودجت لأسهم أكبر. المدى 60-400.
   - ShowColumnLabels: true
     $name: Show SPEED / TOTAL captions
     $description: Small captions above the columns so it is obvious which is which.
+    $name:ar: إظهار عنواني SPEED / TOTAL
+    $description:ar: عنوانان صغيران فوق العمودين حتى يتضح أي عمود هو السرعة وأيهما الإجمالي.
   - DividerPos: 50
     $name: Divider position (% of width)
-    $description: Where the line between SPEED and TOTAL sits. 55 = speed gets a bit more room. Range 20-80.
+    $description: Where the line between SPEED and TOTAL sits, and how the width is split between them. Range 20-80.
+    $name:ar: موضع الخط الفاصل (% من العرض)
+    $description:ar: مكان الخط بين SPEED و TOTAL، وكيف يُقسَّم العرض بينهما. المدى 20-80.
   - DividerOpacity: 46
     $name: Divider opacity (0-255)
     $description: 0 hides the line completely.
+    $name:ar: شفافية الخط الفاصل (0-255)
+    $description:ar: القيمة 0 تخفي الخط تمامًا.
+  - DividerDraggable: true
+    $name: Drag the divider with the mouse
+    $description: Grab the line and drag it left/right - only the line moves, the text stays put. Right click > Reset divider position to centre it again.
+    $name:ar: تحريك الخط الفاصل بالماوس
+    $description:ar: اسحب الخط يمين/شمال - الخط وحده هو الذي يتحرك، والكتابة تبقى في مكانها. للرجوع للمنتصف اعمل كليك يمين ثم Reset divider position.
   - DetailsWidth: 240
     $name: Details panel width
     $description: Size of the pop-up panel opened by clicking the widget.
-  - DetailsHeight: 252
+    $name:ar: عرض لوحة التفاصيل
+    $description:ar: حجم اللوحة التي تفتح عند الضغط على الودجت.
+  - DetailsHeight: 276
     $name: Details panel height
+    $description: A minimum, not a fixed size - the panel grows if its content needs more room.
+    $name:ar: ارتفاع لوحة التفاصيل
+    $description:ar: هذا حدّ أدنى لا مقاس ثابت - اللوحة تكبر لو احتاج محتواها مساحة أكبر.
   - LayoutMode: full
     $name: Layout
     $options:
     - full: Speeds + totals (two columns)
     - speeds: Speeds only (two rows)
     - oneline: Speeds only (single line)
+    $name:ar: التخطيط
+    $options:ar:
+    - full: السرعات + الإجماليات (عمودان)
+    - speeds: السرعات فقط (سطران)
+    - oneline: السرعات فقط (سطر واحد)
   - OffsetX: 12
     $name: X offset
     $description: Distance from the left edge of the taskbar (from the top edge for a vertical taskbar).
+    $name:ar: الإزاحة الأفقية
+    $description:ar: المسافة من الحد الأيسر لشريط المهام (من الحد الأعلى لو الشريط رأسي).
   - OffsetY: 0
     $name: Y offset
+    $name:ar: الإزاحة الرأسية
   - DpiScaling: true
     $name: Scale with DPI
     $description: Multiply sizes by the monitor scaling (125%, 150%, 175%, 200%...).
+    $name:ar: التحجيم مع DPI
+    $description:ar: ضرب المقاسات في نسبة تحجيم الشاشة (125%، 150%، 175%، 200%...).
   - AutoTheme: true
     $name: Auto theme
     $description: Follow the Windows light/dark theme.
+    $name:ar: الثيم التلقائي
+    $description:ar: يتبع ثيم ويندوز الفاتح/الغامق.
   - TextColor: 0xFFFFFF
     $name: Manual text color (hex)
     $description: Used only when Auto theme is off.
+    $name:ar: لون النص اليدوي (hex)
+    $description:ar: يُستخدم فقط عند إيقاف الثيم التلقائي.
   - ColorArrows: true
     $name: Colored arrows
     $description: Blue for download, green for upload. Off = monochrome.
+    $name:ar: أسهم ملوّنة
+    $description:ar: أزرق للتحميل وأخضر للرفع. إيقاف = لون واحد.
   - BgOpacity: 0
     $name: Acrylic tint opacity (0-255)
     $description: Keep 0 for pure glass.
+    $name:ar: شفافية طبقة الأكريليك (0-255)
+    $description:ar: اتركها 0 للزجاج الصافي.
   $name: Appearance
+  $name:ar: المظهر
 - Network:
   - InterfaceMode: auto
     $name: Interface mode
@@ -141,31 +197,61 @@ same spot and with the same acrylic / rounded / theme-aware styling as
     - wifi: Wi-Fi only
     - all: All active interfaces
     - specific: Specific interface (below)
+    $name:ar: اختيار كرت الشبكة
+    $options:ar:
+    - auto: تلقائي (الكرت المستخدم للإنترنت فعلًا)
+    - ethernet: إيثرنت فقط
+    - wifi: واي فاي فقط
+    - all: كل الكروت النشطة
+    - specific: كرت محدد (بالأسفل)
   - SelectedInterface: ""
     $name: Specific interface
     $description: Name or part of the name/description of the adapter, e.g. "Ethernet" or "Realtek".
+    $name:ar: الكرت المحدد
+    $description:ar: اسم الكرت أو جزء من اسمه/وصفه، مثل "Ethernet" أو "Realtek".
   - ExcludeVirtual: true
     $name: Ignore virtual adapters
-    $description: Skip loopback, tunnels, VPN, VMware, Hyper-V, Docker, TAP and other non-physical adapters.
+    $description: Skip loopback, tunnels, VPN, VMware, Hyper-V, Docker, TAP and other non-physical adapters. In Auto mode a VPN still wins when it carries the internet.
+    $name:ar: تجاهل الكروت الوهمية
+    $description:ar: تخطّي loopback والأنفاق وVPN وVMware وHyper-V وDocker وTAP وغيرها من الكروت غير الفيزيائية. في الوضع التلقائي يفوز الـVPN رغم ذلك لو كان هو حامل الإنترنت.
+  - ResetOnSourceChange: true
+    $name: Reset counters when the internet source changes
+    $description: On = switching Ethernet -> VPN -> Wi-Fi zeroes the traffic totals, so they always describe the connection currently in use. Off = keep accumulating across adapters.
+    $name:ar: تصفير العدادات عند تغيّر مصدر الإنترنت
+    $description:ar: تشغيل = الانتقال من إيثرنت إلى VPN أو واي فاي يصفّر إجمالي الترافيك، فتصبح الأرقام دائمًا عن الاتصال المستخدم حاليًا. إيقاف = التجميع المستمر عبر كل الكروت.
   - UpdateInterval: 1000
     $name: Update interval (ms)
     $description: 250-5000 ms. 1000 ms is a good balance.
+    $name:ar: زمن التحديث (ملي ثانية)
+    $description:ar: من 250 إلى 5000. القيمة 1000 توازن جيد.
   - SpeedUnit: auto
     $name: Speed unit
     $options:
     - auto: Auto (bytes per second, e.g. 12.4 MB/s)
     - bytes: Bytes per second (MB/s)
     - bits: Bits per second (Mbps)
+    $name:ar: وحدة السرعة
+    $options:ar:
+    - auto: تلقائي (بايت/ثانية، مثل 12.4 MB/s)
+    - bytes: بايت في الثانية (MB/s)
+    - bits: بِت في الثانية (Mbps)
   - BinaryUnits: true
     $name: Use 1024-based byte units
     $description: On = 1 MB is 1048576 bytes (like Explorer). Off = 1 MB is 1000000 bytes. Bit units are always 1000-based.
+    $name:ar: وحدات بايت بأساس 1024
+    $description:ar: تشغيل = الميجابايت = 1048576 بايت (مثل مستكشف الملفات). إيقاف = 1000000 بايت. وحدات البِت دائمًا بأساس 1000.
   $name: Network
+  $name:ar: الشبكة
 - Traffic:
   - CounterMode: session
     $name: Traffic counter mode
     $options:
     - session: Session (reset when the mod starts)
     - persistent: Persistent (saved to disk)
+    $name:ar: طريقة عدّ الترافيك
+    $options:ar:
+    - session: للجلسة (يتصفّر عند بدء المود)
+    - persistent: دائم (يُحفظ على القرص)
   - ResetCounters: none
     $name: Reset traffic counters
     $description: Pick a value and save to zero the counters. It is applied once, then remembered; the details panel and the right click menu can reset too.
@@ -174,18 +260,32 @@ same spot and with the same acrylic / rounded / theme-aware styling as
     - download: Reset download
     - upload: Reset upload
     - both: Reset both
+    $name:ar: تصفير عدادات الترافيك
+    $description:ar: اختر قيمة واحفظ لتصفير العدادات. تُطبَّق مرة واحدة ثم تُحفظ؛ ويمكن التصفير أيضًا من لوحة التفاصيل أو قائمة كليك يمين.
+    $options:ar:
+    - none: لا تصفير
+    - download: تصفير التحميل
+    - upload: تصفير الرفع
+    - both: تصفير الاثنين
   $name: Traffic
+  $name:ar: الترافيك
 - Behavior:
   - ShowTooltip: true
     $name: Show tooltip on hover
+    $name:ar: إظهار تلميح عند المرور بالماوس
   - ShowDetailsOnClick: true
     $name: Show details panel on click
+    $name:ar: إظهار لوحة التفاصيل عند الضغط
   - HideFullscreen: false
     $name: Hide when fullscreen
+    $name:ar: الإخفاء في وضع ملء الشاشة
   - StartEnabled: true
     $name: Start enabled
     $description: Off = the widget stays hidden until this is turned back on.
+    $name:ar: يبدأ مُفعّلًا
+    $description:ar: إيقاف = الودجت يبقى مخفيًا حتى يُعاد تشغيل هذا الخيار.
   $name: Behavior
+  $name:ar: السلوك
 */
 // ==/WindhawkModSettings==
 // ---------------------------------------------------------------------------
@@ -257,6 +357,7 @@ static const WCHAR* kStorageFileName = L"traffic.dat";
 #define IDM_NET_SETTINGS 104
 #define IDM_WH_SETTINGS 105
 #define IDM_HIDE 106
+#define IDM_RESET_DIVIDER 107
 
 // --- Undocumented composition / z-band APIs (same as the reference mod) ----
 typedef enum _WINDOWCOMPOSITIONATTRIB { WCA_ACCENT_POLICY = 19 } WINDOWCOMPOSITIONATTRIB;
@@ -337,9 +438,11 @@ struct ModSettings {
     int arrowScale = 120;       // percent of font size
     bool showColumnLabels = true;
     int dividerPos = 50;        // percent of the usable width
+    int dividerOffset = 0;      // px nudge on top of dividerPos, set by dragging
+    bool dividerDraggable = true;
     int dividerOpacity = 46;    // 0 = hidden
     int detailsWidth = 240;
-    int detailsHeight = 252;
+    int detailsHeight = 276;
     LayoutMode layout = LayoutMode::Full;
     int offsetX = 12;
     int offsetY = 0;
@@ -352,6 +455,7 @@ struct ModSettings {
     InterfaceMode ifMode = InterfaceMode::Auto;
     std::wstring selectedInterface;
     bool excludeVirtual = true;
+    bool resetOnSourceChange = true;
     int updateInterval = 1000;
     SpeedUnit speedUnit = SpeedUnit::Auto;
     bool binaryUnits = true;
@@ -399,6 +503,13 @@ static std::atomic<unsigned long long> g_panelHiddenAt{0};  // GetTickCount64
 static std::atomic<int> g_hoverState{0};  // 0 none, 1 widget, 2 reset button
 static std::atomic<bool> g_hiddenByUser{false};
 static std::atomic<unsigned long long> g_pendingReset{0};  // bit0 dl, bit1 ul
+// Divider drag state. g_dividerHitX is written by the painter every frame so the
+// hit test always matches the line that is actually on screen, whatever the
+// layout/DPI. g_dividerOffset is the user's dragged offset in *logical* pixels
+// (it is scaled at paint time), kept live here and persisted on mouse-up.
+static std::atomic<float> g_dividerHitX{-1.0f};
+static std::atomic<int> g_dividerOffset{0};
+static std::atomic<bool> g_dividerDragging{false};
 static UINT g_taskbarCreatedMsg = 0;
 static HWINEVENTHOOK g_taskbarHook = nullptr;
 static HWND g_hookedTaskbar = nullptr;
@@ -473,6 +584,17 @@ static void LoadSettings() {
     s.arrowScale = ClampInt(Wh_GetIntSetting(L"Appearance.ArrowScale"), 60, 400);
     s.showColumnLabels = Wh_GetIntSetting(L"Appearance.ShowColumnLabels") != 0;
     s.dividerPos = ClampInt(Wh_GetIntSetting(L"Appearance.DividerPos"), 20, 80);
+    // The dragged offset lives in the mod's own storage, not in the settings YAML:
+    // Windhawk's settings UI has no draggable control, and writing a setting from
+    // the mod would fight the UI. The live value is in g_dividerOffset; this read
+    // only seeds it once so a drag survives a restart.
+    s.dividerDraggable =
+        Wh_GetIntSetting(L"Appearance.DividerDraggable") != 0;
+    if (!s.dividerDraggable) {
+        g_dividerOffset = 0;  // going back to a fixed divider discards the drag
+        Wh_SetIntValue(L"DividerOffset", 0);
+    }
+    s.dividerOffset = g_dividerOffset.load();
     s.dividerOpacity =
         ClampInt(Wh_GetIntSetting(L"Appearance.DividerOpacity"), 0, 255);
     s.detailsWidth = ClampInt(Wh_GetIntSetting(L"Appearance.DetailsWidth"), 140, 900);
@@ -531,6 +653,8 @@ static void LoadSettings() {
 
     s.selectedInterface = ReadStringSetting(L"Network.SelectedInterface");
     s.excludeVirtual = Wh_GetIntSetting(L"Network.ExcludeVirtual") != 0;
+    s.resetOnSourceChange =
+        Wh_GetIntSetting(L"Network.ResetOnSourceChange") != 0;
     s.updateInterval = ClampInt(Wh_GetIntSetting(L"Network.UpdateInterval"), 250, 5000);
 
     std::wstring unit = ReadStringSetting(L"Network.SpeedUnit");
@@ -921,7 +1045,9 @@ class NetworkMonitor {
         m_loggedTableFailure = false;
 
         std::vector<InterfaceCandidate> candidates;
+        std::vector<InterfaceCandidate> allCandidates;
         candidates.reserve(table->NumEntries);
+        allCandidates.reserve(table->NumEntries);
 
         for (ULONG i = 0; i < table->NumEntries; i++) {
             const MIB_IF_ROW2& row = table->Table[i];
@@ -940,6 +1066,13 @@ class NetworkMonitor {
                 row.InterfaceAndOperStatusFlags.HardwareInterface &&
                 !row.InterfaceAndOperStatusFlags.FilterInterface;
 
+            // Loopback and NDIS filter pseudo-interfaces are never useful, not
+            // even as a default-route target.
+            if (row.Type != IF_TYPE_SOFTWARE_LOOPBACK &&
+                !row.InterfaceAndOperStatusFlags.FilterInterface) {
+                allCandidates.push_back(candidate);
+            }
+
             if (!IsUsableInterface(row, s)) {
                 continue;
             }
@@ -948,7 +1081,32 @@ class NetworkMonitor {
 
         FreeMibTable(table);
 
-        std::vector<InterfaceCandidate> selected = SelectInterfaces(candidates, s);
+        std::vector<InterfaceCandidate> selected =
+            SelectInterfaces(candidates, allCandidates, s);
+
+        // --- source change --------------------------------------------------
+        // When the adapter carrying the internet changes (Ethernet -> VPN,
+        // Wi-Fi -> Ethernet, ...) the old adapter's counters are meaningless for
+        // the new connection, so start over rather than adding the two together.
+        if (DidSourceChange(selected)) {
+            std::wstring from = DescribeSelection(m_currentSource);
+            std::wstring to = DescribeSelection(selected);
+            if (s.resetOnSourceChange) {
+                m_totalDown = 0;
+                m_totalUp = 0;
+                m_downRate = 0.0;
+                m_upRate = 0.0;
+                m_haveBaseline = false;  // no delta across the switch
+                FlushTotals(true);
+                Wh_Log(L"Network source changed (%s -> %s): traffic counters reset",
+                       from.c_str(), to.c_str());
+            } else {
+                Wh_Log(L"Network source changed (%s -> %s): counters kept "
+                       L"(ResetOnSourceChange is off)",
+                       from.c_str(), to.c_str());
+            }
+            RememberSource(selected);
+        }
 
         // --- elapsed time ---------------------------------------------------
         LARGE_INTEGER now;
@@ -1129,8 +1287,15 @@ class NetworkMonitor {
     // Auto mode: prefer the adapter carrying the default route (the one Windows
     // would use to reach the internet). Falls back to the busiest active
     // adapter, and logs the decision.
+    //
+    // `candidates` is the filtered list (virtual adapters removed when the
+    // setting says so); `allCandidates` is everything real, used only so that a
+    // VPN/tunnel adapter can still win Auto mode when it actually carries the
+    // default route - otherwise switching a VPN on would leave the mod counting
+    // the physical adapter *and* the tunnel, i.e. double the real traffic.
     std::vector<InterfaceCandidate> SelectInterfaces(
         const std::vector<InterfaceCandidate>& candidates,
+        const std::vector<InterfaceCandidate>& allCandidates,
         const ModSettings& s) {
         std::vector<InterfaceCandidate> result;
 
@@ -1192,9 +1357,13 @@ class NetworkMonitor {
         }
 
         // --- Auto ------------------------------------------------------------
+        // The default route wins, even if it is a VPN/tunnel adapter that the
+        // virtual-adapter filter would normally hide: that adapter IS the
+        // internet right now, and counting it alone is what avoids the
+        // double-counting you get from summing the tunnel and its carrier.
         NET_IFINDEX bestIndex = GetInternetInterfaceIndex();
         if (bestIndex != 0) {
-            for (const auto& c : candidates) {
+            for (const auto& c : allCandidates) {
                 if (c.index == bestIndex && c.up) {
                     result.push_back(c);
                     return result;
@@ -1289,6 +1458,55 @@ class NetworkMonitor {
         return nullptr;
     }
 
+    // --- source-change detection -------------------------------------------
+    // The "source" is the set of LUIDs currently being counted. When it changes,
+    // the traffic being measured is a different connection.
+    static std::vector<unsigned long long> SelectionLuids(
+        const std::vector<InterfaceCandidate>& selected) {
+        std::vector<unsigned long long> luids;
+        luids.reserve(selected.size());
+        for (const auto& c : selected) {
+            luids.push_back(c.luid.Value);
+        }
+        std::sort(luids.begin(), luids.end());
+        return luids;
+    }
+
+    bool DidSourceChange(const std::vector<InterfaceCandidate>& selected) {
+        std::vector<unsigned long long> luids = SelectionLuids(selected);
+
+        // An empty selection means "disconnected", which is a transient state on
+        // the way between two adapters (unplug Ethernet, VPN comes up). Treating
+        // it as a change would reset twice; wait for the next real adapter.
+        if (luids.empty()) {
+            return false;
+        }
+        if (m_sourceLuids.empty()) {
+            m_sourceLuids = luids;
+            m_currentSource = selected;
+            return false;  // first selection is not a change
+        }
+        return luids != m_sourceLuids;
+    }
+
+    void RememberSource(const std::vector<InterfaceCandidate>& selected) {
+        m_sourceLuids = SelectionLuids(selected);
+        m_currentSource = selected;
+    }
+
+    static std::wstring DescribeSelection(
+        const std::vector<InterfaceCandidate>& selected) {
+        if (selected.empty()) {
+            return L"none";
+        }
+        if (selected.size() == 1) {
+            return selected[0].alias;
+        }
+        wchar_t buffer[64];
+        swprintf_s(buffer, L"%d interfaces", (int)selected.size());
+        return buffer;
+    }
+
     NetSnapshot MakeDisconnectedSnapshot() const {
         NetSnapshot snapshot;
         snapshot.downBytesPerSec = 0.0;
@@ -1381,6 +1599,10 @@ class NetworkMonitor {
     bool m_loggedSpecificMiss = false;
 
     std::vector<TrackedInterface> m_tracked;
+    // The set of interface LUIDs currently being counted, so a change of
+    // internet source (Ethernet -> VPN, ...) can be detected.
+    std::vector<unsigned long long> m_sourceLuids;
+    std::vector<InterfaceCandidate> m_currentSource;
     double m_downRate = 0.0;
     double m_upRate = 0.0;
     unsigned long long m_totalDown = 0;
@@ -1592,20 +1814,28 @@ static void DrawArrow(Graphics& graphics,
             // Thick rounded stem plus a chevron head: the friendliest shape and
             // the one that survives smallest. Slightly narrower head than the
             // solid style so the numbers stay dominant.
+            //
+            // Rounded caps extend the stroke by half its width beyond the end
+            // point, so the drawn ink would reach past +-size/2. The geometry
+            // below is inset by half the stroke width to keep the visible ink
+            // inside the requested box - otherwise this style's glyphs sit on a
+            // different optical rail than the solid/triangle ones.
             REAL stem = size * 0.17f;
+            REAL inset = stem / 2.0f;
+            REAL top = cy - dir * (half - inset);
+            REAL tip = cy + dir * (half - inset);
             Pen stemPen(color, stem);
             stemPen.SetStartCap(LineCapRound);
             stemPen.SetEndCap(LineCapRound);
-            graphics.DrawLine(&stemPen, cx, cy - dir * half * 0.78f, cx,
-                              cy + dir * half * 0.40f);
+            graphics.DrawLine(&stemPen, cx, top, cx, cy + dir * half * 0.35f);
             Pen headPen(color, stem);
             headPen.SetStartCap(LineCapRound);
             headPen.SetEndCap(LineCapRound);
             headPen.SetLineJoin(LineJoinRound);
-            REAL w = size * 0.30f;
-            PointF head[3] = {PointF(cx - w, cy + dir * half * 0.14f),
-                              PointF(cx, cy + dir * half * 0.80f),
-                              PointF(cx + w, cy + dir * half * 0.14f)};
+            REAL w = size * 0.30f - inset;
+            PointF head[3] = {PointF(cx - w, tip - dir * (w + inset)),
+                              PointF(cx, tip),
+                              PointF(cx + w, tip - dir * (w + inset))};
             graphics.DrawLines(&headPen, head, 3);
             return;
         }
@@ -1676,6 +1906,72 @@ static void DrawSharpString(Graphics& graphics,
     graphics.DrawString(text, -1, &font, rect, &format, &brush);
 }
 
+// Draws a value as two pieces on a fixed grid: the digits left-aligned in a
+// fixed-width column, then the unit in a smaller, slightly dimmer font starting
+// immediately after that column. Both left edges are therefore constant, so
+// nothing slides horizontally as the number changes width ("491 KB/s" ->
+// "51.2 KB/s"), and the number reads first because the unit is de-emphasised.
+static void DrawValueWithFixedUnit(Graphics& graphics,
+                                   const std::wstring& text,
+                                   Font& numberFont,
+                                   Font& unitFont,
+                                   REAL x,
+                                   REAL y,
+                                   REAL width,
+                                   REAL height,
+                                   StringFormat& format,
+                                   const Brush& numberBrush,
+                                   const Brush& unitBrush,
+                                   bool lightBackground,
+                                   REAL shadowOffset,
+                                   REAL numberColumnWidth) {
+    size_t space = text.rfind(L' ');
+    if (space == std::wstring::npos || numberColumnWidth <= 0.0f ||
+        numberColumnWidth >= width) {
+        DrawSharpString(graphics, text.c_str(), numberFont,
+                        RectF(x, y, width, height), format, numberBrush,
+                        lightBackground, shadowOffset);
+        return;
+    }
+
+    std::wstring number = text.substr(0, space);
+    std::wstring unit = text.substr(space + 1);
+
+    DrawSharpString(graphics, number.c_str(), numberFont,
+                    RectF(x, y, numberColumnWidth, height), format, numberBrush,
+                    lightBackground, shadowOffset);
+
+    // The unit's baseline is nudged down so the two sizes sit on one baseline.
+    REAL baselineShift =
+        (numberFont.GetSize() - unitFont.GetSize()) * 0.78f;
+    DrawSharpString(graphics, unit.c_str(), unitFont,
+                    RectF(x + numberColumnWidth, y + baselineShift,
+                          width - numberColumnWidth, height),
+                    format, unitBrush, lightBackground, shadowOffset);
+}
+
+// Width of the widest number part ("1023", "12.4", "9.99") in this font, used as
+// the fixed digit column so the unit never moves.
+static REAL MeasureNumberColumn(Graphics& graphics,
+                                Font& font,
+                                StringFormat& format) {
+    static const wchar_t* kSamples[] = {L"1023", L"12.4", L"9.99", L"999"};
+    REAL widest = 0;
+    for (const wchar_t* sample : kSamples) {
+        RectF bounds;
+        graphics.MeasureString(sample, -1, &font, RectF(0, 0, 1000, 100), &format,
+                               &bounds);
+        if (bounds.Width > widest) {
+            widest = bounds.Width;
+        }
+    }
+    // One space of separation before the unit.
+    RectF spaceBounds;
+    graphics.MeasureString(L" ", -1, &font, RectF(0, 0, 1000, 100), &format,
+                           &spaceBounds);
+    return widest + spaceBounds.Width;
+}
+
 // Segoe UI Semibold/Black are separate FAMILIES, not style bits, so the weight
 // setting has to pick a family name as well as a style flag. Falls back to plain
 // "Segoe UI" + FontStyleBold if a family is missing.
@@ -1738,6 +2034,9 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
     Color textColor{GetCurrentTextColor(s)};
     const bool light = s.autoTheme ? IsSystemLightMode() : false;
     const REAL shadowOffset = (REAL)(scale >= 1.5 ? 2.0 : 1.0);
+    // Only the two-column layout has a divider; clear the hit zone so the drag
+    // handler cannot grab a line that is not drawn in the other layouts.
+    g_dividerHitX = -1.0f;
 
     Color downColor = textColor;
     Color upColor = textColor;
@@ -1852,7 +2151,8 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
 
     // Full layout: live speed on the left, cumulative traffic on the right, with
     // captions and a divider so the two groups can't be confused. DividerPos
-    // decides how the usable width is split.
+    // decides how the usable width is split; the dragged offset shifts the LINE
+    // ONLY, so grabbing it never moves the text with it.
     REAL columnGap = (REAL)(10.0 * scale);
     REAL usable = (REAL)width - padding * 2.0f - columnGap;
     REAL leftWidth = usable * (s.dividerPos / 100.0f);
@@ -1874,11 +2174,43 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
                         format, captionBrush, light, shadowOffset);
     }
 
-    // Divider centred in the gutter, spanning the content block only.
-    if (s.dividerOpacity > 0) {
-        Pen divider(BlendColor(textColor, (BYTE)s.dividerOpacity),
-                    (REAL)(1.0 * scale));
-        REAL dividerX = padding + leftWidth + columnGap / 2.0f;
+    // Divider. Its x is the split point plus the user's dragged offset - and the
+    // offset is applied HERE ONLY, never to leftWidth/rightX, so dragging the line
+    // moves nothing but the line. The painted x is published for the hit test so
+    // the grab zone always matches what is on screen.
+    REAL dividerX = padding + leftWidth + columnGap / 2.0f;
+    if (s.dividerDraggable) {
+        // Read the LIVE atomic, not the settings snapshot: during a drag the
+        // offset changes on every WM_MOUSEMOVE and settings are only reloaded on
+        // mouse-up, so using s.dividerOffset here would make the line lag behind
+        // the cursor and only snap into place on release.
+        dividerX += (REAL)(g_dividerOffset.load() * scale);
+        // Keep it inside the widget even if a stale offset is larger than the
+        // current width (e.g. the widget was made narrower after a drag).
+        REAL minX = padding;
+        REAL maxX = (REAL)width - padding;
+        if (dividerX < minX) {
+            dividerX = minX;
+        }
+        if (dividerX > maxX) {
+            dividerX = maxX;
+        }
+    }
+    g_dividerHitX = (float)dividerX;
+
+    if (s.dividerOpacity > 0 || (s.dividerDraggable && g_hoverState.load() == 3)) {
+        // While being dragged (or hovered) the line brightens, so it is obvious
+        // that it is the thing being grabbed even at opacity 0.
+        BYTE alpha = (BYTE)s.dividerOpacity;
+        REAL thickness = (REAL)(1.0 * scale);
+        if (g_dividerDragging.load()) {
+            alpha = 220;
+            thickness = (REAL)(2.0 * scale);
+        } else if (g_hoverState.load() == 3) {
+            alpha = (BYTE)(alpha < 140 ? 140 : alpha);
+            thickness = (REAL)(2.0 * scale);
+        }
+        Pen divider(BlendColor(textColor, alpha), thickness);
         REAL top = s.showColumnLabels ? height * 0.10f : height * 0.20f;
         REAL bottom = s.showColumnLabels ? height * 0.90f : height * 0.80f;
         graphics.DrawLine(&divider, dividerX, top, dividerX, bottom);
@@ -1891,6 +2223,64 @@ static void DrawNetworkPanel(HDC hdc, int width, int height, HWND hwnd) {
 }
 
 // --- Details panel painting ------------------------------------------------
+// All vertical rhythm lives in one struct so the rows cannot drift apart and the
+// panel's natural height is known before it is created.
+struct PanelLayout {
+    REAL base = 12.0f;
+    REAL margin = 16.0f;
+    REAL top = 16.0f;
+    REAL captionRow = 0;
+    REAL headlineRow = 0;
+    REAL labelRow = 0;
+    REAL valueRow = 0;
+    REAL totalRow = 0;
+    REAL rowGap = 0;
+    REAL sectionGap = 0;
+    REAL buttonGap = 0;
+    REAL buttonHeight = 0;
+    REAL arrow = 0;
+    REAL totalArrow = 0;
+    REAL arrowGap = 0;
+    REAL columnGap = 0;
+    REAL naturalHeight = 0;  // height needed to show everything uncramped
+};
+
+static PanelLayout ComputePanelLayout(double scale) {
+    PanelLayout l;
+    l.base = (REAL)(12.0 * scale);
+    const REAL b = l.base;
+
+    l.margin = b * 1.34f;
+    l.top = l.margin;
+    // Row heights are >= the font line height (Segoe UI is ~1.33 em) so nothing
+    // is ever clipped and descenders never touch the row below.
+    l.captionRow = b * 1.40f;    // caption font 0.82 em
+    l.headlineRow = b * 1.80f;   // headline font 1.25 em
+    l.labelRow = b * 1.30f;      // label font 0.92 em
+    l.valueRow = b * 2.00f;      // value font 1.45 em
+    l.totalRow = b * 1.55f;      // total font 1.08 em
+    l.rowGap = b * 0.60f;
+    l.sectionGap = b * 0.50f;
+    l.buttonGap = b * 1.30f;
+    l.buttonHeight = b * 2.70f;
+    l.arrow = b * 1.50f;
+    // The totals use the same arrow size as the speeds so every glyph in the
+    // panel sits on one optical rail; only the text gets smaller.
+    l.totalArrow = l.arrow;
+    l.arrowGap = b * 0.60f;
+    // Wide enough for "1023 MB" / "4.82 GB" plus the arrow gutter, so the second
+    // column starts at the panel's midpoint rather than wherever the first value
+    // happened to end.
+    l.columnGap = b * 0.50f;
+
+    l.naturalHeight = l.top + l.captionRow + l.headlineRow + l.labelRow +
+                      l.sectionGap * 2.0f +
+                      (l.labelRow + l.valueRow) * 2.0f + l.rowGap * 1.6f +
+                      l.sectionGap * 2.0f + l.captionRow + l.totalRow +
+                      l.buttonGap + l.buttonHeight + l.margin;
+    return l;
+}
+
 struct PanelMetrics {
     int width = 240;
     int height = 250;
@@ -1899,11 +2289,18 @@ struct PanelMetrics {
 
 static PanelMetrics ComputePanelMetrics(double scale) {
     ModSettings s = GetSettings();
+    PanelLayout layout = ComputePanelLayout(scale);
+
     PanelMetrics metrics;
     metrics.width = (int)(s.detailsWidth * scale);
-    metrics.height = (int)(s.detailsHeight * scale);
-    int margin = (int)(16 * scale);
-    int buttonHeight = (int)(32 * scale);
+    // The setting is a minimum: the panel never shrinks below the height its own
+    // content needs, so no row can end up cramped or clipped.
+    int wanted = (int)(s.detailsHeight * scale);
+    int needed = (int)(layout.naturalHeight + 0.5f);
+    metrics.height = wanted > needed ? wanted : needed;
+
+    int margin = (int)layout.margin;
+    int buttonHeight = (int)layout.buttonHeight;
     metrics.resetButton.left = margin;
     metrics.resetButton.right = metrics.width - margin;
     metrics.resetButton.bottom = metrics.height - margin;
@@ -1941,113 +2338,190 @@ static void DrawDetailsPanel(HDC hdc, int width, int height, HWND hwnd) {
     INT weight = FontStyleBold;
     MakeFontFamily(ResolveWeight(s.textWeight), familyPtr, weight);
     FontFamily& fontFamily = *familyPtr;
-    REAL base = (REAL)(12.0 * scale);
-    Font fontTitle(&fontFamily, base * 0.9f, weight, UnitPixel);
-    Font fontLabel(&fontFamily, base * 0.95f, weight, UnitPixel);
-    Font fontValue(&fontFamily, base * 1.4f, weight, UnitPixel);
-    Font fontSmall(&fontFamily, base * 1.05f, weight, UnitPixel);
+    // Captions keep a fixed bold weight so the section hierarchy survives a
+    // lighter weight choice for the values.
+    std::unique_ptr<FontFamily> captionFamilyPtr;
+    INT captionWeight = FontStyleBold;
+    MakeFontFamily(ResolveWeight(TextWeight::Bold), captionFamilyPtr,
+                   captionWeight);
+
+    const PanelLayout layout = ComputePanelLayout(scale);
+    const REAL base = layout.base;
+
+    Font fontCaption(captionFamilyPtr.get(), base * 0.82f, captionWeight, UnitPixel);
+    Font fontHeadline(&fontFamily, base * 1.25f, weight, UnitPixel);
+    Font fontLabel(&fontFamily, base * 0.92f, weight, UnitPixel);
+    Font fontValue(&fontFamily, base * 1.45f, weight, UnitPixel);
+    Font fontValueUnit(&fontFamily, base * 1.05f, weight, UnitPixel);
+    Font fontTotal(&fontFamily, base * 1.08f, weight, UnitPixel);
+    Font fontTotalUnit(&fontFamily, base * 0.92f, weight, UnitPixel);
 
     SolidBrush textBrush(textColor);
-    SolidBrush labelBrush(BlendColor(textColor, 225));
+    SolidBrush labelBrush(BlendColor(textColor, 215));
+    SolidBrush captionBrush(BlendColor(textColor, 200));
+    SolidBrush unitBrush(BlendColor(textColor, 190));
 
+    // One shared format: near/near so every row is positioned by its own rect
+    // rather than by vertical centring inside a guessed box.
     StringFormat left(StringFormat::GenericTypographic());
     left.SetAlignment(StringAlignmentNear);
     left.SetLineAlignment(StringAlignmentNear);
     left.SetFormatFlags(left.GetFormatFlags() | StringFormatFlagsNoWrap |
                         StringFormatFlagsNoClip);
 
-    REAL margin = (REAL)(16.0 * scale);
-    REAL y = margin;
+    const REAL margin = layout.margin;
+    const REAL contentWidth = (REAL)width - margin * 2.0f;
+    REAL y = layout.top;
 
-    DrawSharpString(graphics, L"NETWORK", fontTitle,
-                    RectF(margin, y, (REAL)width - margin * 2, base * 1.5f), left,
-                    labelBrush, light, shadowOffset);
-    y += base * 1.7f;
+    auto separator = [&](REAL atY) {
+        Pen pen(BlendColor(textColor, 38), (REAL)(1.0 * scale));
+        graphics.DrawLine(&pen, margin, atY, margin + contentWidth, atY);
+    };
+
+    // --- Header ------------------------------------------------------------
+    DrawSharpString(graphics, L"NETWORK", fontCaption,
+                    RectF(margin, y, contentWidth, layout.captionRow), left,
+                    captionBrush, light, shadowOffset);
+    y += layout.captionRow;
 
     std::wstring headline = snapshot.ifName;
     if (!snapshot.ifKind.empty() && snapshot.ifKind != snapshot.ifName) {
         headline += L"  (" + snapshot.ifKind + L")";
     }
-    DrawSharpString(graphics, headline.c_str(), fontSmall,
-                    RectF(margin, y, (REAL)width - margin * 2, base * 1.6f), left,
+    DrawSharpString(graphics, headline.c_str(), fontHeadline,
+                    RectF(margin, y, contentWidth, layout.headlineRow), left,
                     textBrush, light, shadowOffset);
-    y += base * 1.4f;
+    y += layout.headlineRow;
 
     std::wstring status = snapshot.connected ? L"Connected" : L"Disconnected";
     if (!snapshot.ipv4.empty()) {
-        status += L"  -  " + snapshot.ipv4;
+        status += L"  \u00B7  " + snapshot.ipv4;  // middle dot, single spaces
     }
     DrawSharpString(graphics, status.c_str(), fontLabel,
-                    RectF(margin, y, (REAL)width - margin * 2, base * 1.6f), left,
+                    RectF(margin, y, contentWidth, layout.labelRow), left,
                     labelBrush, light, shadowOffset);
-    y += base * 2.0f;
+    y += layout.labelRow;
+
+    y += layout.sectionGap;
+    separator(y);
+    y += layout.sectionGap;
+
+    // --- Live speeds -------------------------------------------------------
+    // The arrow sits in its own gutter and is centred on the label+value pair;
+    // label and value then share ONE left edge, so the block has a single
+    // text column instead of two competing ones.
+    const REAL arrow = layout.arrow;
+    const REAL textX = margin + arrow + layout.arrowGap;
+    const REAL textWidth = contentWidth - arrow - layout.arrowGap;
+    const REAL valueNumberColumn = MeasureNumberColumn(graphics, fontValue, left);
 
     auto drawMetric = [&](const wchar_t* label, const std::wstring& value,
                           bool down) {
-        REAL arrow = base * 1.45f;
+        REAL blockTop = y;
+        REAL blockHeight = layout.labelRow + layout.valueRow;
         DrawArrow(graphics, down ? downColor : upColor, margin + arrow / 2.0f,
-                  y + base * 0.6f, arrow, down, s.arrowStyle);
+                  blockTop + blockHeight / 2.0f, arrow, down, s.arrowStyle);
         DrawSharpString(graphics, label, fontLabel,
-                        RectF(margin + arrow + (REAL)(7.0 * scale), y,
-                              (REAL)width - margin * 2, base * 1.4f),
-                        left, labelBrush, light, shadowOffset);
-        y += base * 1.45f;
-        DrawSharpString(graphics, value.c_str(), fontValue,
-                        RectF(margin, y, (REAL)width - margin * 2, base * 1.8f),
-                        left, textBrush, light, shadowOffset);
-        y += base * 1.85f;
+                        RectF(textX, y, textWidth, layout.labelRow), left,
+                        labelBrush, light, shadowOffset);
+        y += layout.labelRow;
+        DrawValueWithFixedUnit(graphics, value, fontValue, fontValueUnit, textX, y,
+                               textWidth, layout.valueRow, left, textBrush,
+                               unitBrush, light, shadowOffset, valueNumberColumn);
+        y += layout.valueRow;
     };
 
     drawMetric(L"Download", FormatSpeed(snapshot.downBytesPerSec, s), true);
+    y += layout.rowGap * 1.6f;  // clear separation between the two pairs
     drawMetric(L"Upload", FormatSpeed(snapshot.upBytesPerSec, s), false);
 
-    DrawSharpString(
-        graphics,
-        s.counterMode == CounterMode::Persistent ? L"Traffic (persistent)"
-                                                 : L"Traffic (session)",
-        fontLabel, RectF(margin, y, (REAL)width - margin * 2, base * 1.4f), left,
-        labelBrush, light, shadowOffset);
-    y += base * 1.5f;
+    y += layout.sectionGap;
+    separator(y);
+    y += layout.sectionGap;
 
-    REAL arrow = base * 1.35f;
-    DrawArrow(graphics, downColor, margin + arrow / 2.0f, y + base * 0.55f, arrow,
-              true, s.arrowStyle);
-    DrawSharpString(graphics, FormatBytes(snapshot.totalDown, s).c_str(), fontSmall,
-                    RectF(margin + arrow + (REAL)(7.0 * scale), y,
-                          (REAL)width / 2, base * 1.5f),
-                    left, textBrush, light, shadowOffset);
-    REAL midX = (REAL)width / 2.0f + (REAL)(4.0 * scale);
-    DrawArrow(graphics, upColor, midX + arrow / 2.0f, y + base * 0.55f, arrow,
-              false, s.arrowStyle);
-    DrawSharpString(graphics, FormatBytes(snapshot.totalUp, s).c_str(), fontSmall,
-                    RectF(midX + arrow + (REAL)(7.0 * scale), y, (REAL)width / 2,
-                          base * 1.5f),
-                    left, textBrush, light, shadowOffset);
+    // --- Totals ------------------------------------------------------------
+    DrawSharpString(graphics,
+                    s.counterMode == CounterMode::Persistent
+                        ? L"TRAFFIC \u00B7 PERSISTENT"
+                        : L"TRAFFIC \u00B7 SESSION",
+                    fontCaption, RectF(margin, y, contentWidth, layout.captionRow),
+                    left, captionBrush, light, shadowOffset);
+    y += layout.captionRow;
 
-    // Reset button
+    // Totals row: the download pair sits on the same left rail as everything
+    // else; the upload pair is right-aligned as a group, so the row has equal
+    // padding at both ends instead of a pocket of dead space on the right.
+    const REAL totalArrow = layout.totalArrow;
+    const REAL halfWidth = (contentWidth - layout.columnGap) / 2.0f;
+    const REAL totalNumberColumn = MeasureNumberColumn(graphics, fontTotal, left);
+
+    DrawArrow(graphics, downColor, margin + arrow / 2.0f,
+              y + layout.totalRow / 2.0f, totalArrow, true, s.arrowStyle);
+    DrawValueWithFixedUnit(graphics, FormatBytes(snapshot.totalDown, s), fontTotal,
+                           fontTotalUnit, margin + arrow + layout.arrowGap, y,
+                           halfWidth - arrow - layout.arrowGap, layout.totalRow,
+                           left, textBrush, unitBrush, light, shadowOffset,
+                           totalNumberColumn);
+
+    // The upload pair is placed as a group whose right edge lands on the content
+    // edge, so the row has equal padding at both ends. Its own digits still use
+    // the fixed number column, so the unit does not move as the value grows.
+    std::wstring upTotalText = FormatBytes(snapshot.totalUp, s);
+    size_t upSpace = upTotalText.rfind(L' ');
+    std::wstring upUnit = upSpace == std::wstring::npos
+                              ? std::wstring()
+                              : upTotalText.substr(upSpace + 1);
+    RectF unitBounds;
+    graphics.MeasureString(upUnit.empty() ? L"GB" : upUnit.c_str(), -1,
+                           &fontTotalUnit,
+                           RectF(0, 0, contentWidth, layout.totalRow), &left,
+                           &unitBounds);
+    REAL upGroupWidth =
+        arrow + layout.arrowGap + totalNumberColumn + unitBounds.Width;
+    REAL upGroupX = margin + contentWidth - upGroupWidth;
+    REAL upGroupFloor = margin + halfWidth + layout.columnGap;
+    if (upGroupX < upGroupFloor) {
+        upGroupX = upGroupFloor;
+    }
+    DrawArrow(graphics, upColor, upGroupX + arrow / 2.0f,
+              y + layout.totalRow / 2.0f, totalArrow, false, s.arrowStyle);
+    DrawValueWithFixedUnit(graphics, upTotalText, fontTotal, fontTotalUnit,
+                           upGroupX + arrow + layout.arrowGap, y,
+                           upGroupWidth - arrow - layout.arrowGap, layout.totalRow,
+                           left, textBrush, unitBrush, light, shadowOffset,
+                           totalNumberColumn);
+    y += layout.totalRow;
+
+    // --- Reset button ------------------------------------------------------
+    // Positioned from the panel's real height, so it stays pinned to the bottom
+    // margin whatever the content above it needed.
     PanelMetrics metrics = ComputePanelMetrics(scale);
+    RECT button = metrics.resetButton;
+    // The panel may be taller than the requested size (natural-height floor), so
+    // anchor to the DC we were actually given rather than to metrics.height.
+    int buttonHeight = button.bottom - button.top;
+    button.bottom = height - (int)margin;
+    button.top = button.bottom - buttonHeight;
+    button.left = (int)margin;
+    button.right = width - (int)margin;
+
     GraphicsPath buttonPath;
-    AddRoundedRect(buttonPath, (REAL)metrics.resetButton.left,
-                   (REAL)metrics.resetButton.top,
-                   (REAL)(metrics.resetButton.right - metrics.resetButton.left),
-                   (REAL)(metrics.resetButton.bottom - metrics.resetButton.top),
-                   (REAL)(6.0 * scale));
+    AddRoundedRect(buttonPath, (REAL)button.left, (REAL)button.top,
+                   (REAL)(button.right - button.left),
+                   (REAL)(button.bottom - button.top), (REAL)(6.0 * scale));
     bool hoverReset = g_hoverState.load() == 2;
     SolidBrush buttonBrush(BlendColor(textColor, hoverReset ? 56 : 30));
     graphics.FillPath(&buttonBrush, &buttonPath);
-    Pen buttonPen(BlendColor(textColor, 70), (REAL)(1.0 * scale));
+    Pen buttonPen(BlendColor(textColor, hoverReset ? 110 : 70), (REAL)(1.0 * scale));
     graphics.DrawPath(&buttonPen, &buttonPath);
 
     StringFormat centered;
     centered.SetAlignment(StringAlignmentCenter);
     centered.SetLineAlignment(StringAlignmentCenter);
-    DrawSharpString(graphics, L"Reset", fontSmall,
-                    RectF((REAL)metrics.resetButton.left,
-                          (REAL)metrics.resetButton.top,
-                          (REAL)(metrics.resetButton.right -
-                                 metrics.resetButton.left),
-                          (REAL)(metrics.resetButton.bottom -
-                                 metrics.resetButton.top)),
+    DrawSharpString(graphics, L"Reset traffic counters", fontLabel,
+                    RectF((REAL)button.left, (REAL)button.top,
+                          (REAL)(button.right - button.left),
+                          (REAL)(button.bottom - button.top)),
                     centered, textBrush, light, shadowOffset);
 }
 // --- Taskbar geometry ------------------------------------------------------
@@ -2547,6 +3021,38 @@ static void TogglePanel(HWND widget) {
     SetForegroundWindow(g_hPanel);  // so WM_ACTIVATE can dismiss it
 }
 
+// --- Divider drag hit testing ----------------------------------------------
+// The base x is the un-nudged split point: it must be computed the same way the
+// painter does, so a drag offset of 0 leaves the line exactly where the layout
+// puts it.
+static REAL DividerBaseX(HWND hwnd, int width) {
+    ModSettings s = GetSettings();
+    const double scale = GetScaleForWindow(hwnd);
+    REAL padding = (REAL)(9.0 * scale);
+    REAL columnGap = (REAL)(10.0 * scale);
+    REAL usable = (REAL)width - padding * 2.0f - columnGap;
+    REAL leftWidth = usable * (s.dividerPos / 100.0f);
+    return padding + leftWidth + columnGap / 2.0f;
+}
+
+// True when the pointer is within the grab zone of the line that was last
+// painted. Uses the painted x (published by the renderer) rather than
+// recomputing it, so hover can never disagree with what is on screen.
+static bool DividerHover(HWND hwnd, int mouseX, const ModSettings& s) {
+    if (!s.dividerDraggable || s.layout != LayoutMode::Full) {
+        return false;
+    }
+    float painted = g_dividerHitX.load();
+    if (painted < 0.0f) {
+        return false;  // no divider on screen (other layout / not painted yet)
+    }
+    const double scale = GetScaleForWindow(hwnd);
+    // 5 logical px each side: wide enough to grab without stealing the click
+    // that opens the details panel.
+    const float slack = (float)(5.0 * scale);
+    return mouseX >= painted - slack && mouseX <= painted + slack;
+}
+
 // --- Context menu ----------------------------------------------------------
 static void ShowContextMenu(HWND hwnd) {
     HMENU menu = CreatePopupMenu();
@@ -2560,6 +3066,17 @@ static void ShowContextMenu(HWND hwnd) {
     AppendMenuW(menu, MF_STRING, IDM_RESET_DL, L"Reset download");
     AppendMenuW(menu, MF_STRING, IDM_RESET_UL, L"Reset upload");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    {
+        ModSettings s = GetSettings();
+        // Only offered when there is something to undo, so the menu does not grow
+        // an item that does nothing.
+        if (s.dividerDraggable && s.layout == LayoutMode::Full &&
+            g_dividerOffset.load() != 0) {
+            AppendMenuW(menu, MF_STRING, IDM_RESET_DIVIDER,
+                        L"Reset divider position");
+            AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+        }
+    }
     AppendMenuW(menu, MF_STRING, IDM_NET_SETTINGS, L"Open Network Settings");
     AppendMenuW(menu, MF_STRING, IDM_WH_SETTINGS, L"Windhawk Settings");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
@@ -2589,6 +3106,12 @@ static void ShowContextMenu(HWND hwnd) {
             break;
         case IDM_RESET_BOTH:
             RequestReset(true, true);
+            break;
+        case IDM_RESET_DIVIDER:
+            g_dividerOffset = 0;
+            Wh_SetIntValue(L"DividerOffset", 0);
+            LoadSettings();
+            InvalidateRect(hwnd, nullptr, FALSE);
             break;
         case IDM_NET_SETTINGS:
             ShellExecuteW(nullptr, L"open", L"ms-settings:network", nullptr,
@@ -2698,8 +3221,26 @@ static LRESULT CALLBACK WidgetWndProc(HWND hwnd,
             return 0;
 
         case WM_MOUSEMOVE: {
-            if (g_hoverState.load() != 1) {
-                g_hoverState = 1;
+            const int mouseX = GET_X_LPARAM(lParam);
+            ModSettings settings = GetSettings();
+
+            // --- divider drag ---------------------------------------------
+            if (g_dividerDragging.load()) {
+                RECT client{};
+                GetClientRect(hwnd, &client);
+                const double scale = GetScaleForWindow(hwnd);
+                // The offset is stored in logical px so it stays correct if the
+                // monitor scaling changes later.
+                int base = (int)DividerBaseX(hwnd, client.right);
+                int offset = (int)((mouseX - base) / (scale > 0 ? scale : 1.0));
+                g_dividerOffset = offset;
+                InvalidateRect(hwnd, nullptr, FALSE);
+                return 0;
+            }
+
+            const int state = DividerHover(hwnd, mouseX, settings) ? 3 : 1;
+            if (g_hoverState.load() != state) {
+                g_hoverState = state;
                 InvalidateRect(hwnd, nullptr, FALSE);
             }
             TRACKMOUSEEVENT track{sizeof(TRACKMOUSEEVENT), TME_LEAVE, hwnd, 0};
@@ -2707,14 +3248,45 @@ static LRESULT CALLBACK WidgetWndProc(HWND hwnd,
             return 0;
         }
 
+        case WM_SETCURSOR:
+            // A west-east cursor over the grab zone is the only affordance that
+            // says "this line can be dragged".
+            if (LOWORD(lParam) == HTCLIENT &&
+                (g_dividerDragging.load() || g_hoverState.load() == 3)) {
+                SetCursor(LoadCursorW(nullptr, IDC_SIZEWE));
+                return TRUE;
+            }
+            break;
+
         case WM_MOUSELEAVE:
-            if (g_hoverState.load() == 1) {
+            if (g_hoverState.load() != 0 && !g_dividerDragging.load()) {
                 g_hoverState = 0;
                 InvalidateRect(hwnd, nullptr, FALSE);
             }
             return 0;
 
+        case WM_LBUTTONDOWN: {
+            ModSettings settings = GetSettings();
+            if (DividerHover(hwnd, GET_X_LPARAM(lParam), settings)) {
+                g_dividerDragging = true;
+                SetCapture(hwnd);
+                InvalidateRect(hwnd, nullptr, FALSE);
+                return 0;
+            }
+            break;
+        }
+
         case WM_LBUTTONUP:
+            if (g_dividerDragging.load()) {
+                g_dividerDragging = false;
+                ReleaseCapture();
+                // Persist only on release: writing on every mouse move would hit
+                // the registry dozens of times per drag.
+                Wh_SetIntValue(L"DividerOffset", g_dividerOffset.load());
+                LoadSettings();
+                InvalidateRect(hwnd, nullptr, FALSE);
+                return 0;  // a drag is not a click - don't open the panel
+            }
             if (GetSettings().showDetails) {
                 TogglePanel(hwnd);
             }
@@ -2900,6 +3472,10 @@ static void UiThread() {
 // --- Windhawk tool mod callbacks -------------------------------------------
 BOOL WhTool_ModInit() {
     Wh_Log(L"Taskbar Network Lounge starting");
+
+    // Seed the live divider offset from storage BEFORE the first settings read,
+    // so a dragged divider is already in place on the first paint.
+    g_dividerOffset = Wh_GetIntValue(L"DividerOffset", 0);
 
     LoadSettings();
     ApplyResetSettingIfChanged();

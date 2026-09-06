@@ -80,8 +80,26 @@ static LRESULT CALLBACK WidgetWndProc(HWND hwnd,
             return 0;
 
         case WM_MOUSEMOVE: {
-            if (g_hoverState.load() != 1) {
-                g_hoverState = 1;
+            const int mouseX = GET_X_LPARAM(lParam);
+            ModSettings settings = GetSettings();
+
+            // --- divider drag ---------------------------------------------
+            if (g_dividerDragging.load()) {
+                RECT client{};
+                GetClientRect(hwnd, &client);
+                const double scale = GetScaleForWindow(hwnd);
+                // The offset is stored in logical px so it stays correct if the
+                // monitor scaling changes later.
+                int base = (int)DividerBaseX(hwnd, client.right);
+                int offset = (int)((mouseX - base) / (scale > 0 ? scale : 1.0));
+                g_dividerOffset = offset;
+                InvalidateRect(hwnd, nullptr, FALSE);
+                return 0;
+            }
+
+            const int state = DividerHover(hwnd, mouseX, settings) ? 3 : 1;
+            if (g_hoverState.load() != state) {
+                g_hoverState = state;
                 InvalidateRect(hwnd, nullptr, FALSE);
             }
             TRACKMOUSEEVENT track{sizeof(TRACKMOUSEEVENT), TME_LEAVE, hwnd, 0};
@@ -89,14 +107,45 @@ static LRESULT CALLBACK WidgetWndProc(HWND hwnd,
             return 0;
         }
 
+        case WM_SETCURSOR:
+            // A west-east cursor over the grab zone is the only affordance that
+            // says "this line can be dragged".
+            if (LOWORD(lParam) == HTCLIENT &&
+                (g_dividerDragging.load() || g_hoverState.load() == 3)) {
+                SetCursor(LoadCursorW(nullptr, IDC_SIZEWE));
+                return TRUE;
+            }
+            break;
+
         case WM_MOUSELEAVE:
-            if (g_hoverState.load() == 1) {
+            if (g_hoverState.load() != 0 && !g_dividerDragging.load()) {
                 g_hoverState = 0;
                 InvalidateRect(hwnd, nullptr, FALSE);
             }
             return 0;
 
+        case WM_LBUTTONDOWN: {
+            ModSettings settings = GetSettings();
+            if (DividerHover(hwnd, GET_X_LPARAM(lParam), settings)) {
+                g_dividerDragging = true;
+                SetCapture(hwnd);
+                InvalidateRect(hwnd, nullptr, FALSE);
+                return 0;
+            }
+            break;
+        }
+
         case WM_LBUTTONUP:
+            if (g_dividerDragging.load()) {
+                g_dividerDragging = false;
+                ReleaseCapture();
+                // Persist only on release: writing on every mouse move would hit
+                // the registry dozens of times per drag.
+                Wh_SetIntValue(L"DividerOffset", g_dividerOffset.load());
+                LoadSettings();
+                InvalidateRect(hwnd, nullptr, FALSE);
+                return 0;  // a drag is not a click - don't open the panel
+            }
             if (GetSettings().showDetails) {
                 TogglePanel(hwnd);
             }
@@ -282,6 +331,10 @@ static void UiThread() {
 // --- Windhawk tool mod callbacks -------------------------------------------
 BOOL WhTool_ModInit() {
     Wh_Log(L"Taskbar Network Lounge starting");
+
+    // Seed the live divider offset from storage BEFORE the first settings read,
+    // so a dragged divider is already in place on the first paint.
+    g_dividerOffset = Wh_GetIntValue(L"DividerOffset", 0);
 
     LoadSettings();
     ApplyResetSettingIfChanged();

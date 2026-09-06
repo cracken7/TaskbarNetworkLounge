@@ -127,6 +127,36 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    if (!strcmp(cmd, "drag")) {
+        // drag <fromDx> <toDx> [dy] - press inside the widget at fromDx, move to
+        // toDx in small steps (so WM_MOUSEMOVE actually fires), release.
+        if (!widget) {
+            printf("widget window not found\n");
+            return 1;
+        }
+        RECT r{};
+        GetWindowRect(widget, &r);
+        int fromDx = argc > 2 ? atoi(argv[2]) : (r.right - r.left) / 2;
+        int toDx = argc > 3 ? atoi(argv[3]) : fromDx + 30;
+        int dy = argc > 4 ? atoi(argv[4]) : (r.bottom - r.top) / 2;
+        int y = r.top + dy;
+
+        MoveTo(r.left + fromDx, y);
+        Sleep(120);  // let the hover state settle before pressing
+        mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+        Sleep(80);
+        const int steps = 12;
+        for (int i = 1; i <= steps; i++) {
+            int x = r.left + fromDx + (toDx - fromDx) * i / steps;
+            MoveTo(x, y);
+            Sleep(25);
+        }
+        Sleep(80);
+        mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+        printf("dragged from %d to %d (widget-relative), y=%d\n", fromDx, toDx, dy);
+        return 0;
+    }
+
     printf("unknown command: %s\n", cmd);
     return 1;
 }

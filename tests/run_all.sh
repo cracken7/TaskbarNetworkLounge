@@ -40,6 +40,7 @@ build_test test_accuracy
 build_test test_styles
 build_test test_text
 build_test test_fit
+build_test test_panel
 
 # clang links libc++ dynamically; provide both the plain and Windhawk-renamed
 # import names next to the executables.
@@ -70,6 +71,10 @@ echo "################ text sharpness measurements ################"
 echo
 echo "################ width fit (clipping) ################"
 ./test_fit.exe || fail=1
+
+echo
+echo "################ details panel layout ################"
+./test_panel.exe || fail=1
 
 echo
 echo "################ formatters, persistence, live sampling ################"

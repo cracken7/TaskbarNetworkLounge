@@ -62,6 +62,20 @@ static BOOL Wh_SetStringValue(const wchar_t* name, const wchar_t* value) {
     return TRUE;
 }
 
+// Int storage shares the same map as string storage, matching Windhawk's own
+// per-mod local storage semantics closely enough for these tests.
+static std::map<std::wstring, int> g_intStorage;
+
+static int Wh_GetIntValue(const wchar_t* name, int defaultValue) {
+    auto it = g_intStorage.find(name);
+    return it == g_intStorage.end() ? defaultValue : it->second;
+}
+
+static BOOL Wh_SetIntValue(const wchar_t* name, int value) {
+    g_intStorage[name] = value;
+    return TRUE;
+}
+
 // ---- Mod sources under test ----------------------------------------------
 #include "../src/p2_core.inc"
 #include "../src/p3_settings.inc"
