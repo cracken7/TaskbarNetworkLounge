@@ -3436,16 +3436,54 @@ static bool ComputeWidgetPosition(HWND hwnd, int* x, int* y, int* width,
     return true;
 }
 
+// A window that covers its whole monitor without being a real D3D fullscreen
+// (browser kiosk/F11, video players, some games in "borderless" mode) does not
+// raise the notification states above, so check the foreground window's rect
+// against its monitor as well.
+static bool IsForegroundWindowFullscreen() {
+    HWND fg = GetForegroundWindow();
+    if (!fg || fg == g_hWidget || fg == g_hPanel || fg == g_hTooltip) {
+        return false;
+    }
+    // Never treat the desktop or the taskbar itself as "fullscreen".
+    wchar_t className[64] = {};
+    GetClassNameW(fg, className, ARRAYSIZE(className));
+    if (!wcscmp(className, L"WorkerW") || !wcscmp(className, L"Progman") ||
+        !wcscmp(className, L"Shell_TrayWnd") ||
+        !wcscmp(className, L"Windows.UI.Core.CoreWindow") ||
+        !wcscmp(className, L"XamlExplorerHostIslandWindow")) {
+        return false;
+    }
+    RECT window{};
+    if (!GetWindowRect(fg, &window)) {
+        return false;
+    }
+    HMONITOR monitor = MonitorFromWindow(fg, MONITOR_DEFAULTTONEAREST);
+    if (!monitor) {
+        return false;
+    }
+    MONITORINFO info{sizeof(info)};
+    if (!GetMonitorInfoW(monitor, &info)) {
+        return false;
+    }
+    // A window is "fullscreen" when it covers the monitor completely.
+    return window.left <= info.rcMonitor.left &&
+           window.top <= info.rcMonitor.top &&
+           window.right >= info.rcMonitor.right &&
+           window.bottom >= info.rcMonitor.bottom;
+}
+
 static bool ShouldHideForFullscreen() {
     if (!GetSettings().hideFullscreen) {
         return false;
     }
     QUERY_USER_NOTIFICATION_STATE state;
-    if (SUCCEEDED(SHQueryUserNotificationState(&state))) {
-        return state == QUNS_BUSY || state == QUNS_RUNNING_D3D_FULL_SCREEN ||
-               state == QUNS_PRESENTATION_MODE;
+    if (SUCCEEDED(SHQueryUserNotificationState(&state)) &&
+        (state == QUNS_BUSY || state == QUNS_RUNNING_D3D_FULL_SCREEN ||
+         state == QUNS_PRESENTATION_MODE)) {
+        return true;
     }
-    return false;
+    return IsForegroundWindowFullscreen();
 }
 
 static void RepositionWidget(HWND hwnd) {
