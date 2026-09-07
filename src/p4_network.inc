@@ -338,15 +338,17 @@ class NetworkMonitor {
         }
     }
 
-    // Auto mode: prefer the adapter carrying the default route (the one Windows
-    // would use to reach the internet). Falls back to the busiest active
-    // adapter, and logs the decision.
+    // Auto mode: prefer the adapter carrying the default route, but only when it
+    // is a physical one. When a VPN/tun client owns the route, measure its
+    // physical carrier instead - some clients inflate their virtual adapter's
+    // counters, and the physical one is what Task Manager and speedtests agree
+    // with. Falls back to the busiest active physical adapter, and logs the
+    // decision.
     //
     // `candidates` is the filtered list (virtual adapters removed when the
-    // setting says so); `allCandidates` is everything real, used only so that a
-    // VPN/tunnel adapter can still win Auto mode when it actually carries the
-    // default route - otherwise switching a VPN on would leave the mod counting
-    // the physical adapter *and* the tunnel, i.e. double the real traffic.
+    // setting says so); `allCandidates` is everything real, used to resolve the
+    // default-route index to a physical adapter even when the filter hides the
+    // tunnel that owns the route.
     std::vector<InterfaceCandidate> SelectInterfaces(
         const std::vector<InterfaceCandidate>& candidates,
         const std::vector<InterfaceCandidate>& allCandidates,
@@ -411,36 +413,52 @@ class NetworkMonitor {
         }
 
         // --- Auto ------------------------------------------------------------
-        // The default route wins, even if it is a VPN/tunnel adapter that the
-        // virtual-adapter filter would normally hide: that adapter IS the
-        // internet right now, and counting it alone is what avoids the
-        // double-counting you get from summing the tunnel and its carrier.
+        // The default route wins only when it is a *physical* adapter. When a
+        // VPN/tun client owns the route, its virtual adapter's counters are not
+        // trustworthy: some clients (e.g. NekoBox's sing-tun) count the same
+        // bytes several times - measured at 2.66x the real payload in a
+        // controlled test - so following the tunnel shows speeds the line
+        // cannot deliver. Instead measure the physical adapter that actually
+        // carries the traffic out, which is what Task Manager, speedtest and
+        // the ISP all agree on.
         NET_IFINDEX bestIndex = GetInternetInterfaceIndex();
         if (bestIndex != 0) {
             for (const auto& c : allCandidates) {
                 if (c.index == bestIndex && c.up) {
-                    result.push_back(c);
-                    return result;
+                    if (c.physical) {
+                        result.push_back(c);
+                        return result;
+                    }
+                    break;  // virtual default route; use its physical carrier
                 }
             }
         }
 
-        // Fall back to the active interface with the most traffic so far.
+        // Fall back to the active *physical* interface with the most traffic
+        // so far; only if there is no physical one at all, any active one.
         const InterfaceCandidate* best = nullptr;
         unsigned long long bestTraffic = 0;
-        for (const auto& c : candidates) {
-            if (!c.up) {
-                continue;
+        for (bool preferPhysical : {true, false}) {
+            for (const auto& c : candidates) {
+                if (!c.up) {
+                    continue;
+                }
+                if (preferPhysical && !c.physical) {
+                    continue;
+                }
+                unsigned long long traffic = c.inOctets + c.outOctets;
+                if (!best || traffic > bestTraffic) {
+                    best = &c;
+                    bestTraffic = traffic;
+                }
             }
-            unsigned long long traffic = c.inOctets + c.outOctets;
-            if (!best || traffic > bestTraffic) {
-                best = &c;
-                bestTraffic = traffic;
+            if (best) {
+                break;
             }
         }
         if (best) {
             if (!m_loggedAutoFallback) {
-                Wh_Log(L"Auto mode: default-route lookup unavailable, using busiest active interface '%s'",
+                Wh_Log(L"Auto mode: default route is virtual or unknown, measuring physical carrier '%s'",
                        best->alias.c_str());
                 m_loggedAutoFallback = true;
             }

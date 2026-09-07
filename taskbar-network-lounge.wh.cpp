@@ -2,7 +2,7 @@
 // @id              taskbar-network-lounge
 // @name            Taskbar Network Lounge
 // @description     Live network speed and traffic totals on the taskbar, in a native acrylic widget
-// @version         1.4.0
+// @version         1.5.0
 // @author          cracken7
 // @github          https://github.com/cracken7
 // @homepage        https://github.com/cracken7/TaskbarNetworkLounge
@@ -50,9 +50,13 @@ row is upload (green arrow, pointing up). Every number shows its own unit, so
 
 **It counts your VPN correctly.** A VPN adds a second, virtual adapter, so your
 traffic passes through two of them and most meters count a 1 GB download as 2 GB.
-This mod measures only the one adapter Windows is actually using to reach the
-internet, so nothing is ever double-counted. The totals restart when your internet
-source changes, because a total from one connection says nothing about another.
+Worse, some VPN clients (NekoBox among them) inflate their own adapter's counters
+— measured at 2.66× the real payload — so a meter that follows the tunnel shows
+speeds your line cannot deliver. This mod measures the physical adapter that
+actually carries your traffic out, the same one Task Manager and speedtests read,
+so nothing is double-counted and the numbers match your real connection. The
+totals restart when your internet source changes, because a total from one
+connection says nothing about another.
 
 **The numbers are honest.** Speed is measured from Windows' own byte counters,
 sampled twice and divided by the exact elapsed time — never estimated, never
@@ -112,8 +116,11 @@ Widgets off or move the meter with the **X offset** setting.
 ## ما يميّزه
 
 **يحسب الـVPN بشكل صحيح.** يضيف الـVPN كرتًا ثانيًا وهميًّا، فتمرّ بياناتك عبر
-كرتين، ومعظم المؤشرات تحسّب تحميل 1 جيجا على أنه 2 جيجا. هذا المود يقيس الكرت
-الواحد الذي يستخدمه ويندوز فعلًا للوصول إلى الإنترنت، فلا يُحسَب شيء مرتين.
+كرتين، ومعظم المؤشرات تحسّب تحميل 1 جيجا على أنه 2 جيجا. والأسوأ أن بعض عملاء
+VPN (منهم NekoBox) ينفخون عدادات كرتهم الوهمي — قيس في اختبار مضبوط فبلغ 2.66
+ضعف الحجم الحقيقي — فالمؤشر الذي يتبع النفق يعرض سرعات لا تتحملها خطتك. يقيس هذا
+المود الكرت الحقيقي الذي يحمل بياناتك فعلًا إلى الخارج، نفس الكرت الذي يقرأه مدير
+المهام واختبارات السرعة، فلا يُحسَب شيء مرتين وتطابق الأرقام اتصالك الحقيقي.
 وتبدأ الإجماليات من الصفر عند تغيّر مصدر الإنترنت، لأن إجمالي اتصال لا يصف آخر.
 
 **الأرقام صادقة.** تُقاس السرعة من عدّادات بايتات ويندوز نفسها، بقراءتين والقسمة
@@ -377,9 +384,9 @@ Windhawk. ولو غطّى زر Widgets المؤشر، فأوقِف Widgets أو 
     $description:ar: يُستخدم فقط عند اختيار "كرت محدد" في اختيار كرت الشبكة. اكتب اسم الكرت أو أي جزء منه، مثل "Ethernet" أو "Realtek".
   - ExcludeVirtual: true
     $name: Ignore virtual adapters
-    $description: Ignores adapters that are not real hardware - VPN tunnels, VMware, Hyper-V, Docker, TAP, loopback. Note that in Auto mode a VPN is still measured while it is the one carrying your internet; this setting only stops idle virtual adapters from being picked.
+    $description: Ignores adapters that are not real hardware - VPN tunnels, VMware, Hyper-V, Docker, TAP, loopback. In Auto mode the meter always reads the physical adapter carrying your traffic, never a virtual tunnel, so this mainly matters for the other modes.
     $name:ar: تجاهل الكروت الوهمية
-    $description:ar: يتجاهل الكروت التي ليست عتادًا حقيقيًّا - أنفاق VPN وVMware وHyper-V وDocker وTAP وloopback. ولاحظ أنه في الوضع التلقائي يُقاس الـVPN رغم ذلك طالما كان هو حامل الإنترنت، وهذا الإعداد يمنع فقط اختيار الكروت الوهمية غير المستخدمة.
+    $description:ar: يتجاهل الكروت التي ليست عتادًا حقيقيًّا - أنفاق VPN وVMware وHyper-V وDocker وTAP وloopback. وفي الوضع التلقائي يقيس المؤشر دائمًا الكرت الحقيقي الحامل للبيانات وليس أي نفق وهمي، لذا يهمّ هذا الإعداد أساسًا في الأوضاع الأخرى.
   - ResetOnSourceChange: true
     $name: Reset counters when the internet source changes
     $description: On - the totals start from zero every time your internet source changes (VPN on or off, Wi-Fi to Ethernet), so they always describe the connection you are on right now. Off - one running total is kept across every connection.
@@ -1530,15 +1537,17 @@ class NetworkMonitor {
         }
     }
 
-    // Auto mode: prefer the adapter carrying the default route (the one Windows
-    // would use to reach the internet). Falls back to the busiest active
-    // adapter, and logs the decision.
+    // Auto mode: prefer the adapter carrying the default route, but only when it
+    // is a physical one. When a VPN/tun client owns the route, measure its
+    // physical carrier instead - some clients inflate their virtual adapter's
+    // counters, and the physical one is what Task Manager and speedtests agree
+    // with. Falls back to the busiest active physical adapter, and logs the
+    // decision.
     //
     // `candidates` is the filtered list (virtual adapters removed when the
-    // setting says so); `allCandidates` is everything real, used only so that a
-    // VPN/tunnel adapter can still win Auto mode when it actually carries the
-    // default route - otherwise switching a VPN on would leave the mod counting
-    // the physical adapter *and* the tunnel, i.e. double the real traffic.
+    // setting says so); `allCandidates` is everything real, used to resolve the
+    // default-route index to a physical adapter even when the filter hides the
+    // tunnel that owns the route.
     std::vector<InterfaceCandidate> SelectInterfaces(
         const std::vector<InterfaceCandidate>& candidates,
         const std::vector<InterfaceCandidate>& allCandidates,
@@ -1603,36 +1612,52 @@ class NetworkMonitor {
         }
 
         // --- Auto ------------------------------------------------------------
-        // The default route wins, even if it is a VPN/tunnel adapter that the
-        // virtual-adapter filter would normally hide: that adapter IS the
-        // internet right now, and counting it alone is what avoids the
-        // double-counting you get from summing the tunnel and its carrier.
+        // The default route wins only when it is a *physical* adapter. When a
+        // VPN/tun client owns the route, its virtual adapter's counters are not
+        // trustworthy: some clients (e.g. NekoBox's sing-tun) count the same
+        // bytes several times - measured at 2.66x the real payload in a
+        // controlled test - so following the tunnel shows speeds the line
+        // cannot deliver. Instead measure the physical adapter that actually
+        // carries the traffic out, which is what Task Manager, speedtest and
+        // the ISP all agree on.
         NET_IFINDEX bestIndex = GetInternetInterfaceIndex();
         if (bestIndex != 0) {
             for (const auto& c : allCandidates) {
                 if (c.index == bestIndex && c.up) {
-                    result.push_back(c);
-                    return result;
+                    if (c.physical) {
+                        result.push_back(c);
+                        return result;
+                    }
+                    break;  // virtual default route; use its physical carrier
                 }
             }
         }
 
-        // Fall back to the active interface with the most traffic so far.
+        // Fall back to the active *physical* interface with the most traffic
+        // so far; only if there is no physical one at all, any active one.
         const InterfaceCandidate* best = nullptr;
         unsigned long long bestTraffic = 0;
-        for (const auto& c : candidates) {
-            if (!c.up) {
-                continue;
+        for (bool preferPhysical : {true, false}) {
+            for (const auto& c : candidates) {
+                if (!c.up) {
+                    continue;
+                }
+                if (preferPhysical && !c.physical) {
+                    continue;
+                }
+                unsigned long long traffic = c.inOctets + c.outOctets;
+                if (!best || traffic > bestTraffic) {
+                    best = &c;
+                    bestTraffic = traffic;
+                }
             }
-            unsigned long long traffic = c.inOctets + c.outOctets;
-            if (!best || traffic > bestTraffic) {
-                best = &c;
-                bestTraffic = traffic;
+            if (best) {
+                break;
             }
         }
         if (best) {
             if (!m_loggedAutoFallback) {
-                Wh_Log(L"Auto mode: default-route lookup unavailable, using busiest active interface '%s'",
+                Wh_Log(L"Auto mode: default route is virtual or unknown, measuring physical carrier '%s'",
                        best->alias.c_str());
                 m_loggedAutoFallback = true;
             }

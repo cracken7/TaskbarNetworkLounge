@@ -103,9 +103,16 @@ is not a rounding error, it is double.
 are you actually using to reach the internet right now?* Then it measures that one
 adapter, and only that one. In practice:
 
-- Turn a VPN on → the meter follows the VPN.
-- Turn the VPN off → the meter goes back to your Ethernet or Wi-Fi.
+- Turn a VPN on → the meter keeps measuring your real Ethernet or Wi-Fi, the
+  same adapter Task Manager and your speedtest show.
+- Turn the VPN off → nothing changes, it was measuring that adapter all along.
 - Nothing is ever counted twice, whatever combination you are running.
+
+Why not follow the VPN adapter itself? Because some VPN clients (NekoBox among
+them) inflate their own virtual adapter's counters — measured at 2.66× the real
+payload in a controlled test — so a meter that follows the tunnel reports speeds
+your line cannot deliver. The physical adapter's counters are what the ISP,
+Task Manager and every speedtest agree on, so that is what the meter reads.
 
 **And the totals stay meaningful.** 4 GB downloaded over your Ethernet says
 nothing about the VPN you just connected to, so by default the totals restart from
@@ -239,9 +246,9 @@ touched for the mod to work; the defaults are the recommended values.
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| Interface mode | Auto | **Auto** = the adapter actually carrying your internet (handles VPNs correctly). Or force Ethernet, Wi-Fi, all adapters together, or a specific one |
+| Interface mode | Auto | **Auto** = the physical adapter actually carrying your internet (Ethernet/Wi-Fi, even under a VPN). Or force Ethernet, Wi-Fi, all adapters together, or a specific one |
 | Specific interface | — | Only used in *Specific* mode. The adapter name or any part of it, e.g. `Realtek` |
-| Ignore virtual adapters | On | Skips adapters that are not real hardware (VPN tunnels, VMware, Hyper-V, Docker, TAP, loopback). In Auto mode a VPN is still measured while it carries your internet |
+| Ignore virtual adapters | On | Skips adapters that are not real hardware (VPN tunnels, VMware, Hyper-V, Docker, TAP, loopback). In Auto mode the physical carrier is always measured anyway |
 | Reset counters when the internet source changes | On | Totals start from zero each time you switch connection, so they always describe the one you are using |
 | Update interval | 1000 ms | How often the numbers refresh. Range 250–5000 |
 | Speed unit | Auto | Bytes per second (`MB/s`) or bits per second (`Mbps`) |
