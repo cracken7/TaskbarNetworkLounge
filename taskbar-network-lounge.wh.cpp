@@ -3419,7 +3419,7 @@ static bool GetIconPillLeft(HWND taskbar, int* pillLeft) {
 }
 
 // Breathing room kept between the widget and the pill's left edge.
-static const int kPillGap = 10;
+static const int kPillGap = 4;
 
 static bool ComputeWidgetPosition(HWND hwnd, int* x, int* y, int* width,
                                   int* height) {
@@ -3458,23 +3458,20 @@ static bool ComputeWidgetPosition(HWND hwnd, int* x, int* y, int* width,
     }
 
     // Windows 11's centered icon pill grows leftward as more apps open and
-    // would slide over the widget, cutting its rounded corner. Keep the widget
-    // clear of the pill: it stays at its offset normally, and slides left
-    // along with the pill's left edge when the pill expands, returning to its
-    // offset again when apps close.
+    // shrinks back as they close. The widget rides it: always flush against
+    // the pill's left edge (kPillGap px of clearance), moving left and right
+    // with it so the two stay locked together. The X-offset setting is then
+    // only a fallback for when the pill cannot be measured at all.
     if (taskbar.edge == TaskbarEdge::Bottom || taskbar.edge == TaskbarEdge::Top) {
         int pillLeft = 0;
         if (GetIconPillLeft(taskbar.hwnd, &pillLeft)) {
-            int limit = pillLeft - kPillGap - *width;
+            *x = pillLeft - kPillGap - *width;
             HMONITOR monitor =
                 MonitorFromWindow(taskbar.hwnd, MONITOR_DEFAULTTONEAREST);
             MONITORINFO mi{sizeof(mi)};
             if (GetMonitorInfoW(monitor, &mi) &&
-                limit < (int)mi.rcMonitor.left) {
-                limit = (int)mi.rcMonitor.left;
-            }
-            if (*x > limit) {
-                *x = limit;
+                *x < (int)mi.rcMonitor.left) {
+                *x = (int)mi.rcMonitor.left;
             }
         }
     }
