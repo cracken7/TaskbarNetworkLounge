@@ -90,6 +90,29 @@ static void GetWidgetSize(HWND hwnd, int* width, int* height) {
     *height = (int)(s.height * scale);
 }
 
+// Left edge of Windows 11's centered icon pill (Start + task list + padding).
+// The pill grows leftward as more apps open, so this is measured live rather
+// than assumed from a fixed offset. The Start button is a XAML island window
+// of class "Start"; the pill's padding around it is ~12px. ReBarWindow32 is
+// the task list's host, 46px right of Start's left edge, as a fallback.
+static bool GetIconPillLeft(HWND taskbar, int* pillLeft) {
+    RECT rect{};
+    HWND start = FindWindowExW(taskbar, nullptr, L"Start", nullptr);
+    if (start && GetWindowRect(start, &rect) && rect.right > rect.left) {
+        *pillLeft = rect.left - 12;
+        return true;
+    }
+    HWND rebar = FindWindowExW(taskbar, nullptr, L"ReBarWindow32", nullptr);
+    if (rebar && GetWindowRect(rebar, &rect) && rect.right > rect.left) {
+        *pillLeft = rect.left - 46 - 12;
+        return true;
+    }
+    return false;
+}
+
+// Breathing room kept between the widget and the pill's left edge.
+static const int kPillGap = 10;
+
 static bool ComputeWidgetPosition(HWND hwnd, int* x, int* y, int* width,
                                   int* height) {
     TaskbarInfo taskbar;
@@ -123,6 +146,28 @@ static bool ComputeWidgetPosition(HWND hwnd, int* x, int* y, int* width,
         }
         if (*y < screen.top) {
             *y = screen.top;
+        }
+    }
+
+    // Windows 11's centered icon pill grows leftward as more apps open and
+    // would slide over the widget, cutting its rounded corner. Keep the widget
+    // clear of the pill: it stays at its offset normally, and slides left
+    // along with the pill's left edge when the pill expands, returning to its
+    // offset again when apps close.
+    if (taskbar.edge == TaskbarEdge::Bottom || taskbar.edge == TaskbarEdge::Top) {
+        int pillLeft = 0;
+        if (GetIconPillLeft(taskbar.hwnd, &pillLeft)) {
+            int limit = pillLeft - kPillGap - *width;
+            HMONITOR monitor =
+                MonitorFromWindow(taskbar.hwnd, MONITOR_DEFAULTTONEAREST);
+            MONITORINFO mi{sizeof(mi)};
+            if (GetMonitorInfoW(monitor, &mi) &&
+                limit < (int)mi.rcMonitor.left) {
+                limit = (int)mi.rcMonitor.left;
+            }
+            if (*x > limit) {
+                *x = limit;
+            }
         }
     }
     return true;
