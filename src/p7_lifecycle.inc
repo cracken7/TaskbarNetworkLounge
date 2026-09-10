@@ -58,6 +58,7 @@ static LRESULT CALLBACK WidgetWndProc(HWND hwnd,
                     Wh_Log(L"Taskbar window changed, re-registering hook");
                     RegisterTaskbarHook(hwnd);
                 }
+                UpdateFullscreenHideState(hwnd);
                 RepositionWidget(hwnd);
             }
             return 0;

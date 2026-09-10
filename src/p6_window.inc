@@ -178,6 +178,54 @@ static bool ShouldHideForFullscreen() {
     return IsForegroundWindowFullscreen();
 }
 
+static void LogFullscreenTransition(bool hidden) {
+    HWND fg = GetForegroundWindow();
+    wchar_t className[64] = {};
+    wchar_t title[80] = {};
+    if (fg) {
+        GetClassNameW(fg, className, ARRAYSIZE(className));
+        GetWindowTextW(fg, title, ARRAYSIZE(title));
+    }
+    Wh_Log(L"Fullscreen hide %s (foreground: %s '%s')",
+           hidden ? L"engaged" : L"released", className, title);
+}
+
+// --- fullscreen state machine ----------------------------------------------
+// The foreground window crosses the fullscreen boundary in moments: a
+// notification stealing focus for an instant, an in-game overlay popup, the
+// task switcher passing through. Flipping visibility on every check made the
+// widget blink in and out, so a hide is confirmed only after two consecutive
+// sightings and a restore the same way; single blips change nothing.
+static int g_fsStrikes = 0;
+static bool g_fullscreenHidden = false;
+
+static void UpdateFullscreenHideState(HWND hwnd) {
+    if (!GetSettings().hideFullscreen) {
+        g_fsStrikes = 0;
+        if (g_fullscreenHidden) {
+            g_fullscreenHidden = false;
+            LogFullscreenTransition(false);
+            PostMessage(hwnd, APP_WM_REPOSITION, 0, 0);
+        }
+        return;
+    }
+    if (ShouldHideForFullscreen()) {
+        if (g_fullscreenHidden) {
+            g_fsStrikes = 2;
+        } else if (++g_fsStrikes >= 2) {
+            g_fullscreenHidden = true;
+            LogFullscreenTransition(true);
+            PostMessage(hwnd, APP_WM_REPOSITION, 0, 0);
+        }
+    } else if (g_fullscreenHidden && --g_fsStrikes <= 0) {
+        g_fullscreenHidden = false;
+        LogFullscreenTransition(false);
+        PostMessage(hwnd, APP_WM_REPOSITION, 0, 0);
+    } else if (!g_fullscreenHidden) {
+        g_fsStrikes = 0;
+    }
+}
+
 static void RepositionWidget(HWND hwnd) {
     ModSettings s = GetSettings();
 
@@ -185,8 +233,7 @@ static void RepositionWidget(HWND hwnd) {
     bool haveTaskbar = GetTaskbarInfo(&taskbar);
 
     bool shouldHide = g_hiddenByUser.load() || !s.startEnabled ||
-                      !haveTaskbar || !taskbar.visible ||
-                      ShouldHideForFullscreen();
+                      !haveTaskbar || !taskbar.visible || g_fullscreenHidden;
 
     if (shouldHide) {
         if (IsWindowVisible(hwnd)) {
